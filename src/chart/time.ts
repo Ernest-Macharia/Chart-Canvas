@@ -20,6 +20,7 @@ export function getTimeStep(state: State, rangeSec: number): number {
 }
 
 export function buildTimeAxis(state: State): { stepMs: number; labelEvery: number; ticks: TimeTick[]; labels: TimeLabel[] } {
+  const config = getTimeConfig(state);
   const rangeMs = state.timeEnd - state.timeStart;
   const rangeSec = rangeMs / 1000;
   const stepMs = getTimeStep(state, rangeSec);
@@ -29,7 +30,7 @@ export function buildTimeAxis(state: State): { stepMs: number; labelEvery: numbe
   const labels: TimeLabel[] = [];
   const pixelsPerMs = plotWidth(state) / rangeMs;
   const pixelsPerTick = stepMs * pixelsPerMs;
-  const sampleLabel = formatTimeLabel(firstTick, stepSec);
+  const sampleLabel = config.formatLabel(firstTick / 1000, stepSec);
   const minLabelSpacing = estimateLabelSpacingPx(sampleLabel);
   const labelEvery = Math.max(1, Math.ceil(minLabelSpacing / Math.max(1, pixelsPerTick)));
 
@@ -46,7 +47,7 @@ export function buildTimeAxis(state: State): { stepMs: number; labelEvery: numbe
         labels.push({
           value: t,
           x,
-          label: formatTimeLabel(t, stepSec),
+          label: config.formatLabel(t / 1000, stepSec),
         });
       }
     }
@@ -57,19 +58,6 @@ export function buildTimeAxis(state: State): { stepMs: number; labelEvery: numbe
 
 export function generateTimeLabels(state: State): TimeLabel[] {
   return buildTimeAxis(state).labels;
-}
-
-function formatTimeLabel(timestamp: number, stepSec: number): string {
-  const d = new Date(timestamp);
-  const hh = String(d.getUTCHours()).padStart(2, "0");
-  const mm = String(d.getUTCMinutes()).padStart(2, "0");
-
-  if (stepSec < 60) {
-    const ss = String(d.getUTCSeconds()).padStart(2, "0");
-    return `${hh}:${mm}:${ss}`;
-  }
-
-  return `${hh}:${mm}`;
 }
 
 function estimateLabelSpacingPx(label: string): number {
