@@ -27,18 +27,20 @@ export const TIMEFRAME = {
     maxRange: 4 * 3600 * 1000,
     minZoomLevel: -2,
     maxZoomLevel: 3,
+    minPixelsPerTick: 60,
     gridSteps: [60, 150, 200, 300, 600, 900, 1800, 3600],
     formatLabel: (tSec: number, gridStepSec: number): string =>
       gridStepSec < 60 ? fmtHHMMSS(tSec) : gridStepSec < 3600 ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
   },
   "1D": {
-    defaultRange: 35 * 3600 * 1000,
+    defaultRange: 20 * 86400 * 1000,
     step: 24 * 3600 * 1000,
-    minRange: 8 * 3600 * 1000,
-    maxRange: 48 * 3600 * 1000,
+    minRange: 10 * 86400 * 1000,
+    maxRange: 365 * 86400 * 1000,
     minZoomLevel: -3,
     maxZoomLevel: 2,
-    gridSteps: [3600, 7200, 14400, 28800, 43200, 86400],
+    minPixelsPerTick: 90,
+    gridSteps: [43200, 86400, 172800, 604800, 1209600],
     formatLabel: (tSec: number, gridStepSec: number): string =>
       gridStepSec < 86400 ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
   },
@@ -51,6 +53,7 @@ export const TIMEFRAME = {
     maxRange: number;
     minZoomLevel: number;
     maxZoomLevel: number;
+    minPixelsPerTick: number;
     gridSteps: readonly number[];
     formatLabel: (tSec: number, gridStepSec: number) => string;
   }

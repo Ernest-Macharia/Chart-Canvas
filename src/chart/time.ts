@@ -15,7 +15,7 @@ export function clampTimeRange(state: State, range: number): number {
 
 export function getTimeStep(state: State, rangeSec: number): number {
   const config = getTimeConfig(state);
-  const stepSec = findGridStep(config.gridSteps, rangeSec, plotWidth(state), 60);
+  let stepSec = findGridStep(config.gridSteps, rangeSec, plotWidth(state), config.minPixelsPerTick);
   return stepSec * 1000;
 }
 
