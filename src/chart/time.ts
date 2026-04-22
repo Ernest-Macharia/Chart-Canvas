@@ -13,17 +13,17 @@ export function clampTimeRange(state: State, range: number): number {
   return clamp(range, config.minRange, config.maxRange);
 }
 
-export function getTimeStep(state: State, rangeSec: number): number {
+export function getTimeStep(state: State, range: number): number {
   const plotW = plotWidth(state);
-  const stepSec = getUniversalStepSec(state.timeframe, rangeSec, plotW);
+  const stepSec = getUniversalStepSec(state.timeframe, range, plotW);
   return stepSec * 1000;
 }
 
 export function buildTimeAxis(state: State): { stepMs: number; labelEvery: number; ticks: TimeTick[]; labels: TimeLabel[] } {
   const config = getTimeConfig(state);
   const rangeMs = state.timeEnd - state.timeStart;
-  const rangeSec = rangeMs / 1000;
-  const stepMs = getTimeStep(state, rangeSec);
+  const range = rangeMs / 1000;
+  const stepMs = getTimeStep(state, range);
   const stepSec = stepMs / 1000;
 
   const firstTick = Math.ceil(state.timeStart / stepMs) * stepMs;

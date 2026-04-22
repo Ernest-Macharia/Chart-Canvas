@@ -80,7 +80,7 @@ export function getUniversalIntervalSec(timeframe: Timeframe): number {
   return Math.max(1, Math.floor(TIMEFRAME[timeframe].step / 1000));
 }
 
-export function getUniversalStepSec(timeframe: Timeframe, rangeSec: number, plotWidthPx: number): number {
+export function getUniversalStepSec(timeframe: Timeframe, range: number, plotWidthPx: number): number {
   const config = TIMEFRAME[timeframe];
-  return findGridStep(config.gridSteps, rangeSec, plotWidthPx, config.minPixelsPerTick);
+  return findGridStep(config.gridSteps, range, plotWidthPx, config.minPixelsPerTick);
 }

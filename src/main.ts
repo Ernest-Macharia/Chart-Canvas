@@ -1,12 +1,10 @@
 import { drawChart } from "./chart/draw";
-import { getMousePos } from "./chart/mouse";
-import { pan } from "./chart/pan";
 import { createState, setTimeframeState } from "./chart/state";
 import { DEFAULT_TIMERANGE } from "./chart/timeFrame";
 import type { Timeframe } from "./chart/types";
-import { zoom } from "./chart/zoom";
 import { createChartTypeControls } from "./chart/chartControls";
 import { regenerateDataForTimeframe } from "./chart/data";
+import { setupChartEvents } from "./chart/events";
 
 const container = document.getElementById("chart")!;
 const canvas = document.createElement("canvas");
@@ -53,43 +51,13 @@ container.parentElement?.appendChild(timeframeControls);
 const chartTypeControls = createChartTypeControls(state, draw);
 container.parentElement?.appendChild(chartTypeControls);
 
-let lastDragX = 0;
-
-canvas.addEventListener("mousedown", (e) => {
-  state.isDragging = true;
-  const pos = getMousePos(canvas, e);
-  lastDragX = pos.x;
-});
-
-canvas.addEventListener("mousemove", (e) => {
-  if (!state.isDragging) return;
-  const pos = getMousePos(canvas, e);
-  pan(state, pos.x - lastDragX, draw);
-  lastDragX = pos.x;
-});
-
-window.addEventListener("mouseup", () => {
-  state.isDragging = false;
-});
-
-canvas.addEventListener("wheel", (e) => {
-  e.preventDefault();
-  const pos = getMousePos(canvas, e);
-  zoom(state, pos.x, pos.y, e.deltaY, draw);
-});
-
-window.addEventListener("resize", () => {
-  const newWidth = container.clientWidth;
-  const newHeight = container.clientHeight;
-  state.width = newWidth;
-  state.height = newHeight;
-  canvas.width = newWidth * DPR;
-  canvas.height = newHeight * DPR;
-  canvas.style.width = newWidth + "px";
-  canvas.style.height = newHeight + "px";
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(DPR, DPR);
-  draw();
+setupChartEvents({
+  canvas,
+  container,
+  ctx,
+  dpr: DPR,
+  state,
+  redraw: draw,
 });
 
 setTimeframe(DEFAULT_TIMERANGE);
