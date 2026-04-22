@@ -4,6 +4,7 @@ import { findGridStep } from "./math";
 const pad = (n: number) => String(n).padStart(2, "0");
 const UTC_MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
+// Converts Unix seconds into UTC DD/MM/YYYY HH:MM:SS.
 export function formatUnixToDmyHisUtc(tSec: number): string {
   const d = new Date(tSec * 1000);
   const day = pad(d.getUTCDate());
@@ -15,14 +16,17 @@ export function formatUnixToDmyHisUtc(tSec: number): string {
   return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 }
 
+// Formats Unix seconds as HH:MM:SS.
 const fmtHHMMSS = (tSec: number): string => {
   return formatUnixToDmyHisUtc(tSec).split(" ")[1];
 };
 
+// Formats Unix seconds as HH:MM.
 const fmtHHMM = (tSec: number): string => {
   return formatUnixToDmyHisUtc(tSec).split(" ")[1].slice(0, 5);
 };
 
+// Formats Unix seconds as D Mon.
 const fmtDDMon = (tSec: number): string => {
   const [datePart] = formatUnixToDmyHisUtc(tSec).split(" ");
   const [day, month] = datePart.split("/");
@@ -32,6 +36,7 @@ const fmtDDMon = (tSec: number): string => {
   return `${dayNum} ${monthShort}`;
 };
 
+// Formats Unix seconds as D Mon HH:MM.
 const fmtDDMonHHMM = (tSec: number): string => `${fmtDDMon(tSec)} ${fmtHHMM(tSec)}`;
 
 export const TIMEFRAME = {
@@ -76,10 +81,12 @@ export const TIMEFRAME = {
 
 export const DEFAULT_TIMERANGE: Timeframe = "1m";
 
+// Returns base data interval in seconds for a timeframe.
 export function getUniversalIntervalSec(timeframe: Timeframe): number {
   return Math.max(1, Math.floor(TIMEFRAME[timeframe].step / 1000));
 }
 
+// Returns best grid step in seconds for a timeframe and viewport width.
 export function getUniversalStepSec(timeframe: Timeframe, range: number, plotWidthPx: number): number {
   const config = TIMEFRAME[timeframe];
   return findGridStep(config.gridSteps, range, plotWidthPx, config.minPixelsPerTick);

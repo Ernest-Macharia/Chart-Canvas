@@ -3,6 +3,7 @@ import { priceToY, timeToX } from "./transformation";
 import type { State } from "./types";
 import type { ChartDataPoint } from "./data";
 
+// Draws a polyline through visible chart data points.
 export function drawLineChart(
   ctx: CanvasRenderingContext2D,
   state: State,
@@ -38,6 +39,7 @@ export function drawLineChart(
   ctx.restore();
 }
 
+// Draws filled area under the data line plus its outline.
 export function drawAreaChart(
   ctx: CanvasRenderingContext2D,
   state: State,
@@ -93,6 +95,7 @@ export function drawAreaChart(
   ctx.restore();
 }
 
+// Draws a line chart and marker dots at each visible point.
 export function drawLineChartWithDots(
   ctx: CanvasRenderingContext2D,
   state: State,

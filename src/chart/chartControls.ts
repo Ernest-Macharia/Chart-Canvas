@@ -1,5 +1,6 @@
 import type { State } from "./types";
 
+// Creates line/area chart type buttons and handles selection.
 export function createChartTypeControls(
   state: State,
   redraw: () => void

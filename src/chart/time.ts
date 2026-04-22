@@ -4,21 +4,25 @@ import { clamp } from "./math";
 import { timeToX } from "./transformation";
 import type { State, TimeLabel, TimeTick } from "./types";
 
+// Returns active timeframe configuration from state.
 export function getTimeConfig(state: State) {
   return TIMEFRAME[state.timeframe];
 }
 
+// Clamps a proposed time range to configured min/max bounds.
 export function clampTimeRange(state: State, range: number): number {
   const config = getTimeConfig(state);
   return clamp(range, config.minRange, config.maxRange);
 }
 
+// Computes grid step in milliseconds for current range and width.
 export function getTimeStep(state: State, range: number): number {
   const plotW = plotWidth(state);
   const stepSec = getUniversalStepSec(state.timeframe, range, plotW);
   return stepSec * 1000;
 }
 
+// Builds time-axis ticks and labels for the current viewport.
 export function buildTimeAxis(state: State): { stepMs: number; labelEvery: number; ticks: TimeTick[]; labels: TimeLabel[] } {
   const config = getTimeConfig(state);
   const rangeMs = state.timeEnd - state.timeStart;
@@ -63,10 +67,12 @@ export function buildTimeAxis(state: State): { stepMs: number; labelEvery: numbe
   return { stepMs, labelEvery, ticks, labels };
 }
 
+// Convenience helper that returns only time labels.
 export function generateTimeLabels(state: State): TimeLabel[] {
   return buildTimeAxis(state).labels;
 }
 
+// Estimates horizontal label spacing in pixels.
 function estimateLabelSpacingPx(label: string): number {
   return Math.ceil(label.length * 6.6 + 12);
 }

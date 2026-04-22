@@ -1,6 +1,7 @@
 import { plotWidth } from "./state";
 import type { PriceLabel, State, TimeLabel } from "./types";
 
+// Draws time-axis labels beneath the plot area.
 export function drawTimeLabels(ctx: CanvasRenderingContext2D, state: State, timeLabels: TimeLabel[]): void {
   ctx.save();
   ctx.textAlign = "center";
@@ -18,6 +19,7 @@ export function drawTimeLabels(ctx: CanvasRenderingContext2D, state: State, time
   ctx.restore();
 }
 
+// Draws price-axis labels on the right side of the plot.
 export function drawPriceLabels(ctx: CanvasRenderingContext2D, state: State, priceLabels: PriceLabel[]): void {
   ctx.save();
   ctx.fillStyle = "#0f172a";

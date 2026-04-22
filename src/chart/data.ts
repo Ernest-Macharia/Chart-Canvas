@@ -6,6 +6,7 @@ export interface ChartDataPoint {
   value: number;
 }
 
+// how data is received
 export interface CandleData {
   time: number;
   open: number;
@@ -15,11 +16,13 @@ export interface CandleData {
   volume?: number;
 }
 
+// Returns base sampling interval (seconds) for a timeframe.
 function getDataInterval(timeframe: Timeframe): number {
   return getUniversalIntervalSec(timeframe);
 }
 
 
+// Generates synthetic random-walk price data.
 export function generateRandomPriceData(
   startTime: number,
   endTime: number,
@@ -47,6 +50,7 @@ export function generateRandomPriceData(
 }
 
 
+// Filters series data to the active visible time window.
 export function getVisibleData<T extends { time: number }>(
   data: T[],
   timeStart: number,
@@ -56,6 +60,7 @@ export function getVisibleData<T extends { time: number }>(
 }
 
 
+// Builds a fresh timeframe-aligned data window ending at now.
 export function regenerateDataForTimeframe(
   timeframe: Timeframe,
   startPrice: number = 100,

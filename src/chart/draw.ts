@@ -7,6 +7,7 @@ import type { State } from "./types";
 import { drawLineChart, drawAreaChart } from "./drawChartData";
 import { getVisibleData } from "./data";
 
+// Renders one full frame of the chart.
 export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
   if (state.useDataRange && state.chartData) {
     updatePriceRangeFromData(state);

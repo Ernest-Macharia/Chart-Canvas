@@ -1,6 +1,7 @@
 import { DEFAULT_TIMERANGE, TIMEFRAME } from "./timeFrame";
 import type { State, Timeframe } from "./types";
 
+// Creates initial chart state for a given canvas size.
 export function createState(width: number, height: number): State {
   const now = Date.now();
 
@@ -32,14 +33,17 @@ export function createState(width: number, height: number): State {
   };
 }
 
+// Returns plot width inside left/right margins.
 export function plotWidth(state: State): number {
   return state.width - state.left - state.right;
 }
 
+// Returns plot height inside top/bottom margins.
 export function plotHeight(state: State): number {
   return state.height - state.top - state.bottom;
 }
 
+// Resets state for a new timeframe and default zoom/ranges.
 export function setTimeframeState(state: State, timeframe: Timeframe): void {
   state.timeframe = timeframe;
   state.timeZoomLevel = 0;

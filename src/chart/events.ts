@@ -12,6 +12,7 @@ type SetupChartEventsArgs = {
   redraw: () => void;
 };
 
+// Wires mouse, wheel, and resize handlers for chart interactions.
 export function setupChartEvents({
   canvas,
   container,

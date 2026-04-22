@@ -4,10 +4,12 @@ import { clamp } from "./math";
 import { xToTime, yToPrice } from "./transformation";
 import type { State } from "./types";
 
+// Converts discrete zoom level into multiplicative scale.
 function getZoomScale(level: number): number {
   return Math.pow(2, -level);
 }
 
+// Zooms time range around cursor x-position.
 function zoomTime(state: State, cursorX: number, targetRange: number): void {
   const cursorTime = xToTime(state, cursorX);
   const timeRatio = (cursorTime - state.timeStart) / (state.timeEnd - state.timeStart);
@@ -17,6 +19,7 @@ function zoomTime(state: State, cursorX: number, targetRange: number): void {
   state.timeEnd = newTimeEnd;
 }
 
+// Zooms price range around cursor y-position.
 function zoomPrice(state: State, cursorY: number, targetRange: number): void {
   const cursorPrice = yToPrice(state, cursorY);
   const priceRatio = (cursorPrice - state.priceMin) / (state.priceMax - state.priceMin);
@@ -30,6 +33,7 @@ function zoomPrice(state: State, cursorY: number, targetRange: number): void {
   state.priceMax = priceClamp.max;
 }
 
+// Handles wheel zoom for both time and price axes.
 export function zoom(state: State, mx: number, my: number, delta: number, redraw: () => void): void {
   const nowTime = Date.now();
   if (nowTime - state.zoomLastTime < state.zoomCooldown) return;

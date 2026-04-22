@@ -1,8 +1,10 @@
+// Clamps a value within an inclusive numeric range.
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
 
+// Picks the most suitable grid step for current range and plot size.
 export function findGridStep(
   steps: readonly number[],
   range: number,

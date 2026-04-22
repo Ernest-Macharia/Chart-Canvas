@@ -24,10 +24,12 @@ ctx.scale(DPR, DPR);
 
 const state = createState(width, height);
 
+// Redraws the chart using current state.
 function draw() {
   drawChart(ctx, state);
 }
 
+// Applies a timeframe change, refreshes data, then redraws.
 function setTimeframe(tf: Timeframe) {
   const previousLastPrice = state.chartData[state.chartData.length - 1]?.value ?? 100;
   setTimeframeState(state, tf);

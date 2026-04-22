@@ -1,6 +1,7 @@
 import { plotHeight, plotWidth } from "./state";
 import type { PriceTick, State, TimeTick } from "./types";
 
+// Draws vertical grid lines at time tick positions.
 export function drawTimeGrid(ctx: CanvasRenderingContext2D, state: State, timeTicks: TimeTick[]): void {
   ctx.save();
   ctx.strokeStyle = "#e2e8f0";
@@ -14,6 +15,7 @@ export function drawTimeGrid(ctx: CanvasRenderingContext2D, state: State, timeTi
   ctx.restore();
 }
 
+// Draws horizontal grid lines at price tick positions.
 export function drawPriceGrid(ctx: CanvasRenderingContext2D, state: State, priceTicks: PriceTick[]): void {
   ctx.save();
   ctx.strokeStyle = "#e2e8f0";
