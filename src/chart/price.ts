@@ -171,7 +171,7 @@ export function buildPriceAxis(state: State): { step: number; labelEvery: number
         labels.push({
           value: p,
           y,
-          label: formatPriceLabel(p),
+          label: formatPriceLabel(p, step),
         });
       }
     }
@@ -186,8 +186,10 @@ export function generatePriceLabels(state: State): PriceLabel[] {
 }
 
 // Formats prices with precision based on magnitude.
-function formatPriceLabel(price: number): string {
-  if (price >= 100) return price.toFixed(0);
-  if (price >= 1) return price.toFixed(2);
+function formatPriceLabel(price: number, step: number): string {
+  if (step >= 1) return price.toFixed(0);
+  if (step >= 0.1) return price.toFixed(1);
+  if (step >= 0.01) return price.toFixed(2);
+  if (step >= 0.001) return price.toFixed(3);
   return price.toFixed(4);
 }
