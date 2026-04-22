@@ -2,13 +2,15 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+
 export function findGridStep(
   steps: readonly number[],
   rangeSec: number,
   plotSize: number,
-  minPixelsPerTick = 60,
+  minPixelsPerTick: number,
 ): number {
   const idealTickCount = plotSize / minPixelsPerTick;
+
   const idealStep = rangeSec / idealTickCount;
 
   let bestStep = steps[0];

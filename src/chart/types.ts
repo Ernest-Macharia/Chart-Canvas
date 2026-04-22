@@ -1,4 +1,7 @@
+import type { ChartDataPoint } from "./data";
+
 export type Timeframe = "1m" | "1D";
+export type ChartType = "line" | "area" | "candle";
 
 export type State = {
   width: number;
@@ -17,6 +20,9 @@ export type State = {
   isDragging: boolean;
   zoomCooldown: number;
   zoomLastTime: number;
+  chartData: ChartDataPoint[];
+  chartType: ChartType;
+  useDataRange: boolean;
 };
 
 export type TimeLabel = {

@@ -1,11 +1,17 @@
 import { drawPriceGrid, drawTimeGrid } from "./drawGrid";
 import { drawPriceLabels, drawTimeLabels } from "./drawLabels";
-import { buildPriceAxis } from "./price";
+import { buildPriceAxis, updatePriceRangeFromData } from "./price";
 import { plotHeight, plotWidth } from "./state";
 import { buildTimeAxis } from "./time";
 import type { State } from "./types";
+import { drawLineChart, drawAreaChart } from "./drawChartData";
+import { getVisibleData } from "./data";
 
 export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
+  if (state.useDataRange && state.chartData) {
+    updatePriceRangeFromData(state);
+  }
+  
   ctx.clearRect(0, 0, state.width, state.height);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, state.width, state.height);
@@ -17,6 +23,17 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
 
   drawTimeGrid(ctx, state, timeAxis.ticks);
   drawPriceGrid(ctx, state, priceAxis.ticks);
+  
+  if (state.chartData && state.chartData.length > 0) {
+    const visibleData = getVisibleData(state.chartData, state.timeStart / 1000, state.timeEnd / 1000);
+    
+    if (state.chartType === "line") {
+      drawLineChart(ctx, state, visibleData, "#3b82f6", 2);
+    } else if (state.chartType === "area") {
+      drawAreaChart(ctx, state, visibleData, "#3b82f6", 0.3);
+    }
+  }
+  
   drawTimeLabels(ctx, state, timeAxis.labels);
   drawPriceLabels(ctx, state, priceAxis.labels);
 
