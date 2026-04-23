@@ -16,6 +16,14 @@ export interface CandleData {
   volume?: number;
 }
 
+// "tick": {
+//     "epoch": 1776873094,
+//     "quote": 85.8048,
+//     "symbol": "R_50",
+//     "pip_size": 4,
+    
+//   }
+
 // Returns base sampling interval (seconds) for a timeframe.
 function getDataInterval(timeframe: Timeframe): number {
   return getUniversalIntervalSec(timeframe);
@@ -68,12 +76,46 @@ export function regenerateDataForTimeframe(
   const now = Math.floor(Date.now() / 1000);
   let startTime: number;
 
+  // Determine appropriate start time based on timeframe
   switch (timeframe) {
+    case "1t":
+      startTime = now - 300;  // 5 minutes ago for tick data
+      break;
     case "1m":
-      startTime = now - 4 * 3600;
+      startTime = now - 4 * 3600;  // 4 hours ago
+      break;
+    case "2m":
+      startTime = now - 8 * 3600;  // 8 hours ago
+      break;
+    case "3m":
+      startTime = now - 12 * 3600;  // 12 hours ago
+      break;
+    case "5m":
+      startTime = now - 20 * 3600;  // 20 hours ago
+      break;
+    case "10m":
+      startTime = now - 40 * 3600;  // 40 hours ago
+      break;
+    case "15m":
+      startTime = now - 60 * 3600;  // 60 hours ago (2.5 days)
+      break;
+    case "30m":
+      startTime = now - 120 * 3600;  // 120 hours ago (5 days)
+      break;
+    case "1h":
+      startTime = now - 240 * 3600;  // 240 hours ago (10 days)
+      break;
+    case "2h":
+      startTime = now - 480 * 3600;  // 480 hours ago (20 days)
+      break;
+    case "4h":
+      startTime = now - 960 * 3600;  // 960 hours ago (40 days)
+      break;
+    case "8h":
+      startTime = now - 1920 * 3600;  // 1920 hours ago (80 days)
       break;
     case "1D":
-      startTime = now - 365 * 86400;
+      startTime = now - 365 * 86400;  // 365 days ago (1 year)
       break;
     default:
       startTime = now - 24 * 3600;
