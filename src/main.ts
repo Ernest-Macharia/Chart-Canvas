@@ -1,10 +1,9 @@
-// main.ts
 import { drawChart } from "./chart/draw";
-import { createState, setTimeframeState } from "./chart/state";
+import { createState } from "./chart/state";
 import { DEFAULT_TIMERANGE } from "./chart/timeFrame";
 import type { Timeframe } from "./chart/types";
 import { createChartTypeControls } from "./chart/chartControls";
-import { regenerateDataForTimeframe } from "./chart/data";
+import { RANDOM_CHART_DATA, getDataTimeRange } from "./chart/hardcodedData";
 import { setupChartEvents } from "./chart/events";
 
 const container = document.getElementById("chart")!;
@@ -25,46 +24,58 @@ ctx.scale(DPR, DPR);
 
 const state = createState(width, height);
 
+// Get hardcoded data range
+const { minTime, maxTime, minPrice, maxPrice } = getDataTimeRange();
+const priceMargin = (maxPrice - minPrice) * 0.1;
+
+// Override state with hardcoded data
+state.chartData = RANDOM_CHART_DATA;
+state.timeStart = minTime;
+state.timeEnd = maxTime;
+state.priceMin = Math.max(0.01, minPrice - priceMargin);
+state.priceMax = maxPrice + priceMargin;
+state.timeZoomLevel = 0;
+state.priceZoomLevel = 0;
+
 function draw() {
   drawChart(ctx, state);
 }
 
-// Store references to timeframe buttons for updating styles
 let timeframeButtons: Map<string, HTMLButtonElement> = new Map();
 
 function setTimeframe(tf: Timeframe) {
-  const previousLastPrice = state.chartData[state.chartData.length - 1]?.value ?? 100;
-  setTimeframeState(state, tf);
-  state.chartData = regenerateDataForTimeframe(tf, previousLastPrice);
-  draw();
+  state.chartData = RANDOM_CHART_DATA;
+  state.timeframe = tf;
   
-  // Update button styles to show which timeframe is active
+  // Reset to full data range
+  state.timeStart = minTime;
+  state.timeEnd = maxTime;
+  state.priceMin = Math.max(0.01, minPrice - priceMargin);
+  state.priceMax = maxPrice + priceMargin;
+  state.timeZoomLevel = 0;
+  state.priceZoomLevel = 0;
+  
+  draw();
   updateTimeframeButtonStyles(tf);
 }
 
-// Function to update button styles based on selected timeframe
 function updateTimeframeButtonStyles(activeTimeframe: Timeframe) {
   timeframeButtons.forEach((button, timeframe) => {
     if (timeframe === activeTimeframe) {
-      // Active timeframe button style
-      button.style.background = "#3b82f6";  // Blue background
-      button.style.color = "white";          // White text
-      button.style.border = "none";
+      button.style.background = "#3b82f6";
+      button.style.color = "white";
     } else {
-      // Inactive timeframe button style
-      button.style.background = "#e2e8f0";  // Light gray background
-      button.style.color = "#1e293b";        // Dark text
-      button.style.border = "none";
+      button.style.background = "#e2e8f0";
+      button.style.color = "#1e293b";
     }
   });
 }
 
-// Create timeframe controls container
+// Create timeframe controls
 const timeframeControls = document.createElement("div");
 timeframeControls.style.cssText =
   "display:flex;gap:12px;padding:12px 20px;background:#f1f5f9;border-top:1px solid #e2e8f0;justify-content:center;flex-wrap:wrap;";
 
-// Add all timeframe buttons
 const timeframes: Timeframe[] = ["1t", "1m", "2m", "3m", "5m", "10m", "15m", "30m", "1h", "2h", "4h", "8h", "1D"];
 
 timeframes.forEach((tf) => {
@@ -82,7 +93,6 @@ timeframes.forEach((tf) => {
     font-family: monospace;
   `;
   
-  // Add hover effect
   btn.onmouseenter = () => {
     if (state.timeframe !== tf) {
       btn.style.background = "#cbd5e1";
@@ -102,15 +112,11 @@ timeframes.forEach((tf) => {
 });
 
 container.parentElement?.appendChild(timeframeControls);
-
-// Set initial active button style for default timeframe
 updateTimeframeButtonStyles(DEFAULT_TIMERANGE);
 
-// Create chart type controls
 const chartTypeControls = createChartTypeControls(state, draw);
 container.parentElement?.appendChild(chartTypeControls);
 
-// Setup all chart events (mouse, wheel, resize)
 setupChartEvents({
   canvas,
   container,
@@ -120,5 +126,4 @@ setupChartEvents({
   redraw: draw,
 });
 
-setTimeframe(DEFAULT_TIMERANGE);
 draw();

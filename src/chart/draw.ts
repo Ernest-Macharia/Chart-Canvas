@@ -4,8 +4,9 @@ import { buildPriceAxis, updatePriceRangeFromData } from "./price";
 import { plotHeight, plotWidth } from "./state";
 import { buildTimeAxis } from "./time";
 import type { State } from "./types";
-import { drawLineChart, drawAreaChart } from "./drawChartData";
+import { drawLineChart, drawAreaChart, drawCandleChart } from "./drawChartData";
 import { getVisibleData } from "./data";
+import { ticksToOHLC, getVisibleCandles } from "./ohlc";
 
 // Renders one full frame of the chart.
 export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
@@ -26,12 +27,17 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
   drawPriceGrid(ctx, state, priceAxis.ticks);
   
   if (state.chartData && state.chartData.length > 0) {
-    const visibleData = getVisibleData(state.chartData, state.timeStart / 1000, state.timeEnd / 1000);
+    const visibleData = getVisibleData(state.chartData, state.timeStart, state.timeEnd);
     
     if (state.chartType === "line") {
       drawLineChart(ctx, state, visibleData, "#3b82f6", 2);
     } else if (state.chartType === "area") {
       drawAreaChart(ctx, state, visibleData, "#3b82f6", 0.3);
+    } else if (state.chartType === "candle") {
+      // Convert ticks to OHLC candles based on current timeframe
+      const candles = ticksToOHLC(state.chartData, state.timeframe);
+      const visibleCandles = getVisibleCandles(candles, state.timeStart, state.timeEnd);
+      drawCandleChart(ctx, state, visibleCandles);
     }
   }
   

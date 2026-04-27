@@ -16,12 +16,10 @@ type PriceRangeCacheEntry = {
 
 const priceRangeCache = new WeakMap<State, PriceRangeCacheEntry>();
 
-// Returns active price configuration for the selected timeframe.
 export function getPriceConfig(state: State) {
   return PRICEFRAME[state.timeframe];
 }
 
-// Clamps a candidate price window to configured bounds.
 export function clampPriceRange(state: State, min: number, max: number): { min: number; max: number } {
   const config = getPriceConfig(state);
   let range = max - min;
@@ -30,18 +28,15 @@ export function clampPriceRange(state: State, min: number, max: number): { min: 
   return { min, max: min + range };
 }
 
-// Computes price grid step for current range and chart height.
 export function getPriceStep(state: State, range: number): number {
   const config = getPriceConfig(state);
   return findGridStep(config.gridSteps, range, plotHeight(state), config.minPixelsPerTick);
 }
 
-// Rounds a price to the nearest grid step.
 export function snapPrice(value: number, step: number): number {
   return Math.round(value / step) * step;
 }
 
-// Auto-fits price range from currently visible chart data.
 export function updatePriceRangeFromData(state: State): void {
   if (state.chartData.length === 0) return;
   const firstDataPoint = state.chartData[0];
@@ -55,18 +50,18 @@ export function updatePriceRangeFromData(state: State): void {
     cached.timeStart === state.timeStart &&
     cached.timeEnd === state.timeEnd &&
     cached.dataLength === state.chartData.length &&
-    cached.firstTime === firstDataPoint.time &&
-    cached.lastTime === lastDataPoint.time;
+    cached.firstTime === firstDataPoint.epoch * 1000 &&
+    cached.lastTime === lastDataPoint.epoch * 1000;
   if (unchanged) return;
 
-  const visibleData = getVisibleData(state.chartData, state.timeStart / 1000, state.timeEnd / 1000);
+  const visibleData = getVisibleData(state.chartData, state.timeStart, state.timeEnd);
   if (visibleData.length === 0) return;
 
   let dataMin = Infinity;
   let dataMax = -Infinity;
   for (const point of visibleData) {
-    dataMin = Math.min(dataMin, point.value);
-    dataMax = Math.max(dataMax, point.value);
+    dataMin = Math.min(dataMin, point.quote);
+    dataMax = Math.max(dataMax, point.quote);
   }
   if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) return;
 
@@ -91,7 +86,6 @@ export function updatePriceRangeFromData(state: State): void {
     totalRange = nextMax - nextMin;
   }
   
-  // Cap maximum range if needed (preserve margins by adjusting both sides)
   if (totalRange > config.maxRange) {
     const excess = totalRange - config.maxRange;
     const halfExcess = excess / 2;
@@ -129,25 +123,21 @@ export function updatePriceRangeFromData(state: State): void {
     nextMax += shift;
   }
   
-  // Final validation
   if (!Number.isFinite(nextMin) || !Number.isFinite(nextMax) || nextMax <= nextMin) return;
 
-  // Update state with new price range
   state.priceMin = nextMin;
   state.priceMax = nextMax;
 
-  // Cache the calculation results
   priceRangeCache.set(state, {
     timeframe: state.timeframe,
     timeStart: state.timeStart,
     timeEnd: state.timeEnd,
     dataLength: state.chartData.length,
-    firstTime: firstDataPoint.time,
-    lastTime: lastDataPoint.time,
+    firstTime: firstDataPoint.epoch * 1000,
+    lastTime: lastDataPoint.epoch * 1000,
   });
 }
 
-// Builds price-axis ticks and labels for current viewport.
 export function buildPriceAxis(state: State): { step: number; labelEvery: number; ticks: PriceTick[]; labels: PriceLabel[] } {
   const range = state.priceMax - state.priceMin;
   const step = getPriceStep(state, range);
@@ -171,7 +161,7 @@ export function buildPriceAxis(state: State): { step: number; labelEvery: number
         labels.push({
           value: p,
           y,
-          label: formatPriceLabel(p, step),
+          label: formatPriceLabel(state, p),
         });
       }
     }
@@ -180,16 +170,20 @@ export function buildPriceAxis(state: State): { step: number; labelEvery: number
   return { step, labelEvery, ticks, labels };
 }
 
-// Convenience helper that returns only price labels.
 export function generatePriceLabels(state: State): PriceLabel[] {
   return buildPriceAxis(state).labels;
 }
 
-// Formats prices with precision based on magnitude.
-function formatPriceLabel(price: number, step: number): string {
-  if (step >= 1) return price.toFixed(0);
-  if (step >= 0.1) return price.toFixed(1);
-  if (step >= 0.01) return price.toFixed(2);
-  if (step >= 0.001) return price.toFixed(3);
-  return price.toFixed(4);
+function getPipSize(state: State): number {
+  // Check if chart data exists and has at least one point
+  if (state.chartData && state.chartData.length > 0) {
+    return state.chartData[0].pip_size || 4;  // Return pip_size from first tick, default to 4
+  }
+  return 4;  // Default to 4 decimal places if no data
+}
+
+// Formats prices with precision based on pip_size from the data
+function formatPriceLabel(state: State, price: number): string {
+  const pipSize = getPipSize(state);  // Get the number of decimal places from data
+  return price.toFixed(pipSize);      // Format price with correct decimal places
 }

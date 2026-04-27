@@ -2,8 +2,9 @@ import { plotHeight, plotWidth } from "./state";
 import { priceToY, timeToX } from "./transformation";
 import type { State } from "./types";
 import type { ChartDataPoint } from "./data";
+import type { CandleData } from "./ohlc";
 
-// Draws a polyline through visible chart data points.
+// Draws a line through chart data points.
 export function drawLineChart(
   ctx: CanvasRenderingContext2D,
   state: State,
@@ -22,8 +23,9 @@ export function drawLineChart(
   
   let isFirst = true;
   for (const point of data) {
-    const x = timeToX(state, point.time * 1000);
-    const y = priceToY(state, point.value);
+    // Convert epoch (seconds) to ms for timeToX
+    const x = timeToX(state, point.epoch * 1000);
+    const y = priceToY(state, point.quote);
     
     if (x < state.left || x > state.left + plotWidth(state)) continue;
     
@@ -58,8 +60,8 @@ export function drawAreaChart(
   
   let isFirst = true;
   for (const point of data) {
-    const x = timeToX(state, point.time * 1000);
-    const y = priceToY(state, point.value);
+    const x = timeToX(state, point.epoch * 1000);
+    const y = priceToY(state, point.quote);
     
     if (x < state.left || x > state.left + plotWidth(state)) continue;
     
@@ -73,11 +75,11 @@ export function drawAreaChart(
   
   if (data.length > 0) {
     const lastPoint = data[data.length - 1];
-    const lastX = timeToX(state, lastPoint.time * 1000);
+    const lastX = timeToX(state, lastPoint.epoch * 1000);
     ctx.lineTo(lastX, baseY);
     
     const firstPoint = data[0];
-    const firstX = timeToX(state, firstPoint.time * 1000);
+    const firstX = timeToX(state, firstPoint.epoch * 1000);
     ctx.lineTo(firstX, baseY);
   }
   
@@ -95,28 +97,55 @@ export function drawAreaChart(
   ctx.restore();
 }
 
-// Draws a line chart and marker dots at each visible point.
-export function drawLineChartWithDots(
+
+//draw candles
+export function drawCandleChart(
   ctx: CanvasRenderingContext2D,
   state: State,
-  data: ChartDataPoint[],
-  color: string = "#3b82f6",
-  dotRadius: number = 3
+  candles: CandleData[],
+  upColor: string = "#26a69a",
+  downColor: string = "#ef5350",
+  wickColor: string = "#666666",
+  candleWidth: number = 6
 ): void {
-  drawLineChart(ctx, state, data, color, 2);
+  if (candles.length === 0) return;
   
   ctx.save();
-  ctx.fillStyle = color;
   
-  for (const point of data) {
-    const x = timeToX(state, point.time * 1000);
-    const y = priceToY(state, point.value);
+  const plotLeft = state.left;
+  const plotRight = state.left + plotWidth(state);
+  
+  for (const candle of candles) {
+    const x = timeToX(state, candle.time);
     
-    if (x >= state.left && x <= state.left + plotWidth(state)) {
-      ctx.beginPath();
-      ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    if (x + candleWidth/2 < plotLeft || x - candleWidth/2 > plotRight) continue;
+    
+    const yOpen = priceToY(state, candle.open);
+    const yClose = priceToY(state, candle.close);
+    const yHigh = priceToY(state, candle.high);
+    const yLow = priceToY(state, candle.low);
+    
+    const isBullish = candle.close >= candle.open;
+    const bodyTop = isBullish ? yClose : yOpen;
+    const bodyBottom = isBullish ? yOpen : yClose;
+    const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+    
+    ctx.fillStyle = isBullish ? upColor : downColor;
+    ctx.strokeStyle = isBullish ? upColor : downColor;
+    
+    ctx.beginPath();
+    ctx.moveTo(x, yHigh);
+    ctx.lineTo(x, yLow);
+    ctx.strokeStyle = wickColor;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    const halfWidth = candleWidth / 2;
+    ctx.fillRect(x - halfWidth, bodyTop, candleWidth, bodyHeight);
+    
+    ctx.strokeStyle = isBullish ? upColor : downColor;
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(x - halfWidth, bodyTop, candleWidth, bodyHeight);
   }
   
   ctx.restore();
