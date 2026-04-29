@@ -2,11 +2,11 @@ import type { ChartDataPoint } from "./data";
 import type { Timeframe } from "./types";
 
 export interface CandleData {
-  time: number;      // Candle open time (ms)
-  open: number;
-  high: number;
-  low: number;
-  close: number;
+  time: number;      // Candle open time in milliseconds (for x-axis positioning)
+  open: number;      // First price in the candle period (where candle starts)
+  high: number;      // Highest price in the candle period (top of wick)
+  low: number;       // Lowest price in the candle period (bottom of wick)
+  close: number;     // Last price in the candle period (where candle ends)
 }
 
 // Convert timeframe to grouping interval in seconds

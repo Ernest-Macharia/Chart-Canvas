@@ -1,49 +1,51 @@
 import type { ChartDataPoint } from "./data";
 
-
-
-// Direct export - no conversion needed
-export const RANDOM_CHART_DATA: ChartDataPoint[] = generateData();
-
 function roundTo(price: number, pip_size: number) {
   return parseFloat(price.toFixed(pip_size));
 }
 
-export function generateData(
-  startTime: number = 1776873000,
-  tickCount: number = 1000,
+// Generate ONE master dataset - enough for ALL timeframes
+export function generateMasterData(
+  tickCount: number = 20000,
   intervalSecs: number = 1,
-  startPrice: number = 85.8048,
+  startPrice: number = 85.80,
   pip_size: number = 4,
   symbol: string = "R_50"
 ): ChartDataPoint[] {
   let currentPrice = startPrice;
-  let currentTime = startTime;
+  const startTime = Math.floor(Date.now() / 1000) - (tickCount * intervalSecs);
   const ticks: ChartDataPoint[] = [];
 
-  for (let i=0; i < tickCount;  i++){
-    const change = (Math.random() - 0.5) * 0.1;
+  for (let i = 0; i < tickCount; i++) {
+    const change = (Math.random() - 0.48) * 0.08; // Slight upward bias
     currentPrice = currentPrice + change;
+    currentPrice = Math.max(10, Math.min(1000, currentPrice));
 
-      const roundedPrice = roundTo(currentPrice, pip_size);
-      ticks.push({
-        epoch: currentTime,
-        quote: roundedPrice,
-        symbol: symbol,
-        pip_size: pip_size
-      })
-    currentTime += intervalSecs;
+    ticks.push({
+      epoch: startTime + (i * intervalSecs),
+      quote: roundTo(currentPrice, pip_size),
+      symbol: symbol,
+      pip_size: pip_size
+    });
   }
+
   return ticks;
 }
 
-// Get min/max for initial view (epoch in seconds, convert to ms for state)
-export const getDataTimeRange = () => {
-  const timesMs = RANDOM_CHART_DATA.map(t => t.epoch * 1000);
+// Master data - used for ALL timeframes
+export const MASTER_CHART_DATA: ChartDataPoint[] = generateMasterData(20000, 1, 85.80, 4);
+
+// For backward compatibility
+export const RANDOM_CHART_DATA: ChartDataPoint[] = MASTER_CHART_DATA;
+
+// Get min/max for initial view
+export const getDataTimeRange = (data: ChartDataPoint[] = MASTER_CHART_DATA) => {
+  const timesMs = data.map(t => t.epoch * 1000);
+  const quotes = data.map(t => t.quote);
   return {
     minTime: Math.min(...timesMs),
     maxTime: Math.max(...timesMs),
-    minPrice: Math.min(...RANDOM_CHART_DATA.map(t => t.quote)),
-    maxPrice: Math.max(...RANDOM_CHART_DATA.map(t => t.quote)),
+    minPrice: Math.min(...quotes),
+    maxPrice: Math.max(...quotes),
   };
 };
