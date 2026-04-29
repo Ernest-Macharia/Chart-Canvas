@@ -1,7 +1,11 @@
-// priceFrame.ts - Fixed with proper imports
-import type { Timeframe, State } from "./types";  // ← ADD THIS IMPORT
+import type { Timeframe, State } from "./types";
 
-export const PRICE_GRID_MARGIN_STEPS = 1.5;
+export const PRICE_PADDING = {
+  topRatio: 0.15,    // 15% padding at the top
+  bottomRatio: 0.10, // 10% padding at the bottom
+  minTopPadding: 5,  // Minimum 5 units at top (for very small ranges)
+  minBottomPadding: 3 // Minimum 3 units at bottom
+} as const;
 
 export const PRICEFRAME = {
   "1t": {

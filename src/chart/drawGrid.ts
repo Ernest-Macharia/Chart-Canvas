@@ -1,21 +1,24 @@
 import { plotHeight, plotWidth } from "./state";
 import type { PriceTick, State, TimeTick } from "./types";
 
-// Draws vertical grid lines at time tick positions.
+// Draws vertical grid lines at time tick positions
+// Every grid line should align with a label (same x positions)
 export function drawTimeGrid(ctx: CanvasRenderingContext2D, state: State, timeTicks: TimeTick[]): void {
   ctx.save();
   ctx.strokeStyle = "#e2e8f0";
   ctx.lineWidth = 0.8;
+  
   for (const tick of timeTicks) {
     ctx.beginPath();
     ctx.moveTo(tick.x, state.top);
     ctx.lineTo(tick.x, state.top + plotHeight(state));
     ctx.stroke();
   }
+  
   ctx.restore();
 }
 
-// Draws horizontal grid lines at price tick positions.
+// Draws horizontal grid lines at price tick positions
 export function drawPriceGrid(ctx: CanvasRenderingContext2D, state: State, priceTicks: PriceTick[]): void {
   ctx.save();
   ctx.strokeStyle = "#e2e8f0";

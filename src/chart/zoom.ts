@@ -3,6 +3,8 @@ import { getTimeConfig, clampTimeRange } from "./time";
 import { clamp } from "./math";
 import { xToTime, yToPrice } from "./transformation";
 import type { State } from "./types";
+import { getVisibleData } from "./data";
+import { PRICE_PADDING } from "./priceFrame";
 
 // Converts discrete zoom level into multiplicative scale.
 function getZoomScale(level: number): number {
@@ -20,8 +22,52 @@ function zoomTime(state: State, cursorX: number, targetRange: number): void {
 }
 
 // Zooms price range around cursor y-position.
+// zoom.ts - Modify zoomPrice function to maintain padding
+
+// Zooms price range around cursor y-position while preserving padding
 function zoomPrice(state: State, cursorY: number, targetRange: number): void {
   const cursorPrice = yToPrice(state, cursorY);
+  
+  // Calculate current visible data range (without padding)
+  const visibleData = getVisibleData(state.chartData, state.timeStart, state.timeEnd);
+  if (visibleData.length > 0) {
+    let dataMin = Infinity;
+    let dataMax = -Infinity;
+    for (const point of visibleData) {
+      dataMin = Math.min(dataMin, point.quote);
+      dataMax = Math.max(dataMax, point.quote);
+    }
+    
+    if (Number.isFinite(dataMin) && Number.isFinite(dataMax)) {
+      const dataRange = dataMax - dataMin;
+      const topPadding = Math.max(dataRange * PRICE_PADDING.topRatio, PRICE_PADDING.minTopPadding);
+      const bottomPadding = Math.max(dataRange * PRICE_PADDING.bottomRatio, PRICE_PADDING.minBottomPadding);
+      
+      // The target range includes padding, so we need to calculate the data-only range
+      const paddingTotal = topPadding + bottomPadding;
+      const dataOnlyTargetRange = Math.max(targetRange - paddingTotal, dataRange * 0.5);
+      
+      // Calculate new range with padding
+      const priceRatio = (cursorPrice - dataMin) / dataRange;
+      const newDataMin = cursorPrice - priceRatio * dataOnlyTargetRange;
+      const newDataMax = newDataMin + dataOnlyTargetRange;
+      
+      // Add padding back
+      let newPriceMin = newDataMin - bottomPadding;
+      let newPriceMax = newDataMax + topPadding;
+      
+      const priceClamp = clampPriceRange(state, newPriceMin, newPriceMax);
+      const priceStep = getPriceStep(state, priceClamp.max - priceClamp.min);
+      priceClamp.min = snapPrice(priceClamp.min, priceStep);
+      priceClamp.max = priceClamp.min + Math.ceil((priceClamp.max - priceClamp.min) / priceStep) * priceStep;
+      
+      state.priceMin = priceClamp.min;
+      state.priceMax = priceClamp.max;
+      return;
+    }
+  }
+  
+  // Fallback to original behavior if no visible data
   const priceRatio = (cursorPrice - state.priceMin) / (state.priceMax - state.priceMin);
   const newPriceMin = cursorPrice - priceRatio * targetRange;
   const newPriceMax = newPriceMin + targetRange;

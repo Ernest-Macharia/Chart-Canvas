@@ -5,13 +5,6 @@ const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-// Grid step constants (in seconds, for findGridStep)
-// const SEC = 1;
-const MIN = 60;
-const HR = 3600;
-const D = 86400;
-// const WEEK = 7 * D;
-// const MONTH = 30 * D;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const UTC_MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
@@ -34,173 +27,186 @@ const fmtDDMon = (tSec: number): string => {
 const fmtDDMonHHMM = (tSec: number): string => `${fmtDDMon(tSec)} ${fmtHHMM(tSec)}`;
 
 export const TIMEFRAME = {
+  // 1 SECOND (tick chart)
   "1t": {
-    defaultRange: 50 * SECOND,
+    defaultRange: 60 * SECOND,           // Show 70 seconds
     step: 1 * SECOND,
     minRange: 10 * SECOND,
     maxRange: 8 * MINUTE,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 40,
+    minPixelsPerTick: 90,
     gridSteps: [1, 2, 5, 10, 15, 30, 60],
     formatLabel: (tSec: number, stepSec: number): string => 
       stepSec < 60 ? fmtHHMMSS(tSec) : fmtHHMM(tSec),
   },
 
+  // 1 MINUTE
   "1m": {
-    defaultRange: 30 * MINUTE,
+    defaultRange: 30 * MINUTE,           // Show 30 minutes
     step: 1 * MINUTE,
-    minRange: 5 * MINUTE,
+    minRange: 8 * MINUTE,
     maxRange: 4 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 45,
-    gridSteps: [1 * MIN, 2 * MIN, 3 * MIN, 5 * MIN, 10 * MIN, 15 * MIN, 30 * MIN, 1 * HR],
+    minPixelsPerTick: 70,
+    gridSteps: [60, 120, 180, 300, 600, 900, 1800, 3600],
     formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * HR ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
+      stepSec < 3600 ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
   },
 
+  // 2 MINUTES
   "2m": {
-    defaultRange: 30 * 2 * MINUTE,
+    defaultRange: 60 * MINUTE,           // Show 1 hour
     step: 2 * MINUTE,
-    minRange: 5 * 2 * MINUTE,
+    minRange: 16 * MINUTE,
     maxRange: 4 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 45,
-    gridSteps: [2 * MIN, 4 * MIN, 10 * MIN, 20 * MIN, 30 * MIN, 1 * HR],
+    minPixelsPerTick: 75,
+    gridSteps: [120, 240, 360, 600, 1200, 1800, 3600],
     formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * HR ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
+      stepSec < 3600 ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
   },
 
+  // 3 MINUTES
   "3m": {
-    defaultRange: 30 * 3 * MINUTE,
+    defaultRange: 90 * MINUTE,           // Show 1.5 hours
     step: 3 * MINUTE,
-    minRange: 5 * 3 * MINUTE,
+    minRange: 24 * MINUTE,
     maxRange: 6 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 45,
-    gridSteps: [3 * MIN, 6 * MIN, 15 * MIN, 30 * MIN, 1 * HR, 2 * HR],
+    minPixelsPerTick: 75,
+    gridSteps: [180, 360, 540, 900, 1800, 3600, 7200],
     formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * HR ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
+      stepSec < 3600 ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
   },
 
+  // 5 MINUTES
   "5m": {
-    defaultRange: 30 * 5 * MINUTE,
+    defaultRange: 150 * MINUTE,          // Show 2.5 hours
     step: 5 * MINUTE,
-    minRange: 5 * 5 * MINUTE,
+    minRange: 40 * MINUTE,
     maxRange: 8 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 45,
-    gridSteps: [5 * MIN, 10 * MIN, 30 * MIN, 1 * HR, 2 * HR, 4 * HR],
+    minPixelsPerTick: 80,
+    gridSteps: [300, 600, 900, 1800, 3600, 7200, 14400],
     formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * HR ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
+      stepSec < 3600 ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
   },
 
+  // 10 MINUTES
   "10m": {
-    defaultRange: 30 * 10 * MINUTE,
+    defaultRange: 300 * MINUTE,          // Show 5 hours
     step: 10 * MINUTE,
-    minRange: 5 * 10 * MINUTE,
+    minRange: 80 * MINUTE,
     maxRange: 12 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 45,
-    gridSteps: [10 * MIN, 20 * MIN, 30 * MIN, 1 * HR, 2 * HR, 4 * HR],
+    minPixelsPerTick: 80,
+    gridSteps: [600, 1200, 1800, 3600, 7200, 14400, 28800],
     formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * HR ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
+      stepSec < 3600 ? fmtHHMM(tSec) : fmtDDMonHHMM(tSec),
   },
 
+  // 15 MINUTES
   "15m": {
-    defaultRange: 4 * HOUR,
+    defaultRange: 8 * HOUR,              // Show 8 hours
     step: 15 * MINUTE,
-    minRange: 1 * HOUR,
-    maxRange: 12 * HOUR,
+    minRange: 2 * HOUR,
+    maxRange: 16 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 50,
-    gridSteps: [15 * MIN, 30 * MIN, 1 * HR, 2 * HR, 3 * HR, 4 * HR, 6 * HR],
+    minPixelsPerTick: 100,
+    gridSteps: [900, 1800, 3600, 7200, 14400, 28800, 43200],
     formatLabel: (tSec: number, stepSec: number): string => {
-      if (stepSec < 1 * HR) return fmtHHMM(tSec);
-      return fmtDDMonHHMM(tSec);
+      if (stepSec < 86400) return fmtDDMonHHMM(tSec);
+      return fmtDDMon(tSec);
     },
   },
 
+  // 30 MINUTES
   "30m": {
-    defaultRange: 12 * HOUR,
+    defaultRange: 15 * HOUR,             // Show 15 hours
     step: 30 * MINUTE,
-    minRange: 2 * HOUR,
+    minRange: 4 * HOUR,
     maxRange: 24 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 45,
-    gridSteps: [30 * MIN, 1 * HR, 2 * HR, 4 * HR, 6 * HR, 12 * HR],
+    minPixelsPerTick: 100,
+    gridSteps: [1800, 3600, 7200, 14400, 28800, 43200, 86400],
     formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * D ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
+      stepSec < 86400 ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
   },
 
+  // 1 HOUR
   "1h": {
-    defaultRange: 24 * HOUR,
+    defaultRange: 30 * HOUR,             // Show 30 hours (1.25 days)
     step: 1 * HOUR,
-    minRange: 4 * HOUR,
-    maxRange: 7 * DAY,
-    minZoomLevel: -2,
-    maxZoomLevel: 3,
-    minPixelsPerTick: 50,
-    gridSteps: [1 * HR, 2 * HR, 4 * HR, 8 * HR, 12 * HR, 1 * D],
-    formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * D ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
-  },
-
-  "2h": {
-    defaultRange: 2 * DAY,
-    step: 2 * HOUR,
     minRange: 8 * HOUR,
-    maxRange: 14 * DAY,
+    maxRange: 48 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 50,
-    gridSteps: [2 * HR, 4 * HR, 8 * HR, 12 * HR, 1 * D, 2 * D],
+    minPixelsPerTick: 100,
+    gridSteps: [3600, 7200, 14400, 28800, 43200, 86400, 129600],
     formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * D ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
+      stepSec < 86400 ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
   },
 
+  // 2 HOURS
+  "2h": {
+    defaultRange: 3 * DAY,               // Show 3 days
+    step: 2 * HOUR,
+    minRange: 16 * HOUR,
+    maxRange: 72 * HOUR,
+    minZoomLevel: -2,
+    maxZoomLevel: 3,
+    minPixelsPerTick: 100,
+    gridSteps: [7200, 14400, 28800, 43200, 86400, 129600, 172800],
+    formatLabel: (tSec: number, stepSec: number): string => 
+      stepSec < 86400 ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
+  },
+
+  // 4 HOURS
   "4h": {
-    defaultRange: 4 * DAY,
+    defaultRange: 5 * DAY,               // Show 5 days
     step: 4 * HOUR,
-    minRange: 1 * DAY,
-    maxRange: 30 * DAY,
+    minRange: 32 * HOUR,
+    maxRange: 120 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 55,
-    gridSteps: [4 * HR, 8 * HR, 12 * HR, 1 * D, 2 * D, 3 * D],
+    minPixelsPerTick: 85,
+    gridSteps: [14400, 21600, 28800, 43200, 64800, 86400, 129600, 172800, 259200],
     formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * D ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
+      stepSec < 86400 ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
   },
 
+  // 8 HOURS
   "8h": {
-    defaultRange: 6 * DAY,
+    defaultRange: 10 * DAY,              // Show 10 days
     step: 8 * HOUR,
-    minRange: 2 * DAY,
-    maxRange: 60 * DAY,
+    minRange: 64 * HOUR,
+    maxRange: 180 * HOUR,
     minZoomLevel: -2,
     maxZoomLevel: 3,
-    minPixelsPerTick: 55,
-    gridSteps: [6 * HR, 8 * HR, 12 * HR, 1 * D, 2 * D, 4 * D, 7 * D, 14 * D],
+    minPixelsPerTick: 105,
+    gridSteps: [28800, 43200, 86400, 129600, 172800, 259200, 345600, 518400, 604800],
     formatLabel: (tSec: number, stepSec: number): string => 
-      stepSec < 1 * D ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
+      stepSec < 86400 ? fmtDDMonHHMM(tSec) : fmtDDMon(tSec),
   },
 
+  // 1 DAY
   "1D": {
-    defaultRange: 30 * DAY,
+    defaultRange: 90 * DAY,              // Show 90 days (3 months)
     step: 1 * DAY,
-    minRange: 7 * DAY,
+    minRange: 10 * DAY,
     maxRange: 365 * DAY,
     minZoomLevel: -3,
     maxZoomLevel: 2,
-    minPixelsPerTick: 60,
-    gridSteps: [1 * D, 2 * D, 7 * D, 14 * D, 30 * D],
+    minPixelsPerTick: 90,
+    gridSteps: [86400, 172800, 259200, 432000, 604800, 864000, 1209600, 1728000, 2160000, 2592000],
     formatLabel: (tSec: number, _stepSec: number): string => fmtDDMon(tSec),
   },
 } as const;

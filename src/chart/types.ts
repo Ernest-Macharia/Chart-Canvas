@@ -14,7 +14,7 @@ export type Timeframe =
   | "4h"   // 4 hours
   | "8h"   // 8 hours
   | "1D";  // 1 day
-export type ChartType = "line" | "area" | "candle";
+export type ChartType = "line" | "area" | "candle" | "hollow" | "ohlc";
 
 export type State = {
   width: number;

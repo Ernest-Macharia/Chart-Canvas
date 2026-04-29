@@ -11,7 +11,9 @@ export function createChartTypeControls(
   const types = [
     { id: "line", label: "Line Chart" },
     { id: "area", label: "Area Chart" },
-    { id: "candle", label: "Candlestick" }
+    { id: "candle", label: "Candlestick" },
+    { id: "hollow", label: "Hollow Candle" },
+    { id: "ohlc", label: "OHLC" }
   ] as const;
   
   types.forEach(({ id, label }) => {

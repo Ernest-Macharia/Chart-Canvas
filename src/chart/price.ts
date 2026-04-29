@@ -1,5 +1,5 @@
 import { getVisibleData } from "./data";
-import { PRICEFRAME, PRICE_GRID_MARGIN_STEPS } from "./priceFrame";
+import { PRICEFRAME, PRICE_PADDING } from "./priceFrame";
 import { plotHeight } from "./state";
 import { clamp, findGridStep } from "./math";
 import { priceToY } from "./transformation";
@@ -37,6 +37,7 @@ export function snapPrice(value: number, step: number): number {
   return Math.round(value / step) * step;
 }
 
+
 export function updatePriceRangeFromData(state: State): void {
   if (state.chartData.length === 0) return;
   const firstDataPoint = state.chartData[0];
@@ -68,16 +69,23 @@ export function updatePriceRangeFromData(state: State): void {
   const config = getPriceConfig(state);
   const dataRange = dataMax - dataMin;
   
-  const effectiveRange = Math.max(dataRange, config.minRange);
-  const step = getPriceStep(state, effectiveRange);
-  if (!Number.isFinite(step) || step <= 0) return;
-
-  const margin = PRICE_GRID_MARGIN_STEPS * step;
+  // Calculate padding based on data range
+  const topPadding = Math.max(
+    dataRange * PRICE_PADDING.topRatio,
+    PRICE_PADDING.minTopPadding
+  );
+  const bottomPadding = Math.max(
+    dataRange * PRICE_PADDING.bottomRatio,
+    PRICE_PADDING.minBottomPadding
+  );
   
-  let nextMin = dataMin - margin;
-  let nextMax = dataMax + margin;
+  // Apply padding to min and max
+  let nextMin = dataMin - bottomPadding;
+  let nextMax = dataMax + topPadding;
   
   let totalRange = nextMax - nextMin;
+  
+  // Ensure range meets minimum requirements
   if (totalRange < config.minRange) {
     const deficit = config.minRange - totalRange;
     const halfDeficit = deficit / 2;
@@ -86,6 +94,7 @@ export function updatePriceRangeFromData(state: State): void {
     totalRange = nextMax - nextMin;
   }
   
+  // Enforce max range limit
   if (totalRange > config.maxRange) {
     const excess = totalRange - config.maxRange;
     const halfExcess = excess / 2;
@@ -94,11 +103,16 @@ export function updatePriceRangeFromData(state: State): void {
     totalRange = nextMax - nextMin;
   }
 
+  // Snap to grid steps for clean labels
+  const step = getPriceStep(state, totalRange);
+  if (!Number.isFinite(step) || step <= 0) return;
+
   nextMin = Math.floor(nextMin / step) * step;
   nextMax = Math.ceil(nextMax / step) * step;
   
   totalRange = nextMax - nextMin;
   
+  // Final validation
   if (totalRange < config.minRange) {
     nextMin = nextMin - step;
     totalRange = nextMax - nextMin;
@@ -117,6 +131,7 @@ export function updatePriceRangeFromData(state: State): void {
     nextMax = Math.ceil(nextMax / step) * step;
   }
   
+  // Ensure positive prices
   if (nextMin < 0.01) {
     const shift = 0.01 - nextMin;
     nextMin = 0.01;

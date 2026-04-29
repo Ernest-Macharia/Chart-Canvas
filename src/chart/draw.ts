@@ -4,7 +4,7 @@ import { buildPriceAxis, updatePriceRangeFromData } from "./price";
 import { plotHeight, plotWidth } from "./state";
 import { buildTimeAxis } from "./time";
 import type { State } from "./types";
-import { drawLineChart, drawAreaChart, drawCandleChart } from "./drawChartData";
+import { drawLineChart, drawAreaChart, drawCandleChart, drawHollowCandleChart, drawOHLCChart } from "./drawChartData";
 import { getVisibleData } from "./data";
 import { ticksToOHLC, getVisibleCandles } from "./ohlc";
 
@@ -20,9 +20,10 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
   ctx.fillStyle = "#fafcff";
   ctx.fillRect(state.left, state.top, plotWidth(state), plotHeight(state));
 
-  const timeAxis = buildTimeAxis(state);
+  const timeAxis = buildTimeAxis(state);      // Returns { stepMs, ticks, labels }
   const priceAxis = buildPriceAxis(state);
 
+  // Draw grids using ticks (or labels - they have same x positions)
   drawTimeGrid(ctx, state, timeAxis.ticks);
   drawPriceGrid(ctx, state, priceAxis.ticks);
   
@@ -34,10 +35,17 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
     } else if (state.chartType === "area") {
       drawAreaChart(ctx, state, visibleData, "#3b82f6", 0.3);
     } else if (state.chartType === "candle") {
-      // Convert ticks to OHLC candles based on current timeframe
       const candles = ticksToOHLC(state.chartData, state.timeframe);
       const visibleCandles = getVisibleCandles(candles, state.timeStart, state.timeEnd);
-      drawCandleChart(ctx, state, visibleCandles);
+      drawCandleChart(ctx, state, visibleCandles, "#26a69a", "#ef5350", "#666666");
+    } else if (state.chartType === "hollow") {
+      const candles = ticksToOHLC(state.chartData, state.timeframe);
+      const visibleCandles = getVisibleCandles(candles, state.timeStart, state.timeEnd);
+      drawHollowCandleChart(ctx, state, visibleCandles, "#26a69a", "#ef5350", "#666666");
+    } else if (state.chartType === "ohlc") {
+      const candles = ticksToOHLC(state.chartData, state.timeframe);
+      const visibleCandles = getVisibleCandles(candles, state.timeStart, state.timeEnd);
+      drawOHLCChart(ctx, state, visibleCandles, "#26a69a", "#ef5350");
     }
   }
   
