@@ -3,6 +3,7 @@ import { TIMEFRAME } from "./timeFrame";
 import { clamp } from "./math";
 import { timeToX } from "./transformation";
 import type { State, TimeLabel, TimeTick } from "./types";
+import { getLatestDataTime } from "./data";
 
 let previousStepSec: number = 0;
 
@@ -141,4 +142,90 @@ export function buildTimeAxis(state: State): { stepMs: number; ticks: TimeTick[]
 
 export function generateTimeLabels(state: State): TimeLabel[] {
   return buildTimeAxis(state).labels;
+}
+
+// Check if we should show the latest button (not at latest, no offset)
+export function shouldShowLatestButton(state: State): boolean {
+  if (!state.chartData || state.chartData.length === 0) return false;
+  
+  const latestDataTime = getLatestDataTime(state.chartData);
+  const isAtLatest = Math.abs(state.timeEnd - latestDataTime) <= 100;
+  const hasOffset = state.timeEnd > latestDataTime + 100;
+  
+  // Show button when we're not at latest data AND we have no offset
+  return !isAtLatest && !hasOffset;
+}
+
+
+export function applyRightPadding(state: State, paddingRatio: number = 0.30): void {
+  if (!state.chartData || state.chartData.length === 0) return;
+  
+  const latestDataTime = getLatestDataTime(state.chartData);
+  const currentRange = state.timeEnd - state.timeStart;
+  
+  // Calculate data portion (70% of total range)
+  const dataPortion = 1 - paddingRatio;
+  const dataRange = currentRange * dataPortion;
+  
+  // Set time range with offset (30% empty space on the right)
+  // The data ends at latestDataTime, and we have empty space after it
+  state.timeStart = latestDataTime - dataRange;
+  state.timeEnd = latestDataTime + (currentRange * paddingRatio);
+}
+
+// Remove right padding and snap to latest data
+export function removeRightPadding(state: State): void {
+  if (!state.chartData || state.chartData.length === 0) return;
+  
+  const latestDataTime = getLatestDataTime(state.chartData);
+  const currentRange = state.timeEnd - state.timeStart;
+  
+  // Snap to latest data (no offset)
+  state.timeEnd = latestDataTime;
+  state.timeStart = latestDataTime - currentRange;
+}
+
+// Check if the chart's right edge is at or near the latest data
+export function isAtLatestData(state: State): boolean {
+  if (!state.chartData || state.chartData.length === 0) return false;
+  
+  const latestDataTime = getLatestDataTime(state.chartData);
+  const tolerance = 100; // 100ms tolerance
+  
+  return Math.abs(state.timeEnd - latestDataTime) <= tolerance;
+}
+
+// Check if right padding is currently applied
+export function hasRightPadding(state: State): boolean {
+  if (!state.chartData || state.chartData.length === 0) return false;
+  
+  const latestDataTime = getLatestDataTime(state.chartData);
+  // If timeEnd is greater than latestDataTime, we have padding/offset
+  return state.timeEnd > latestDataTime + 10; // Small tolerance
+}
+
+export function needsOffset(state: State): boolean {
+  if (!state.chartData || state.chartData.length === 0) return false;
+  
+  const latestDataTime = getLatestDataTime(state.chartData);
+  const atLatest = Math.abs(state.timeEnd - latestDataTime) <= 100;
+  
+  // We need offset if we're at latest data but don't have padding
+  return atLatest && state.timeEnd <= latestDataTime + 10;
+}
+
+// Go to latest data with offset
+export function goToLatest(state: State, paddingRatio: number = 0.30): void {
+  if (!state.chartData || state.chartData.length === 0) return;
+  
+  const latestDataTime = getLatestDataTime(state.chartData);
+  const totalVisibleRange = state.timeEnd - state.timeStart;
+  
+  // Calculate data portion (70% of total range)
+  const dataPortion = 1 - paddingRatio;
+  const dataRange = totalVisibleRange * dataPortion;
+  
+  // Set to latest with offset
+  state.timeStart = latestDataTime - dataRange;
+  state.timeEnd = latestDataTime + (totalVisibleRange * paddingRatio);
 }

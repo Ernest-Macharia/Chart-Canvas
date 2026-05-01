@@ -3,18 +3,8 @@ import { PRICEFRAME, PRICE_PADDING } from "./priceFrame";
 import { plotHeight } from "./state";
 import { clamp, findGridStep } from "./math";
 import { priceToY } from "./transformation";
-import type { PriceLabel, PriceTick, State, Timeframe } from "./types";
+import type { PriceLabel, PriceTick, State } from "./types";
 
-type PriceRangeCacheEntry = {
-  timeframe: Timeframe;
-  timeStart: number;
-  timeEnd: number;
-  dataLength: number;
-  firstTime: number;
-  lastTime: number;
-};
-
-const priceRangeCache = new WeakMap<State, PriceRangeCacheEntry>();
 
 export function getPriceConfig(state: State) {
   return PRICEFRAME[state.timeframe];
@@ -38,23 +28,11 @@ export function snapPrice(value: number, step: number): number {
 }
 
 
+// price.ts - Update updatePriceRangeFromData to be more aggressive
+
 export function updatePriceRangeFromData(state: State): void {
-  if (state.chartData.length === 0) return;
-  const firstDataPoint = state.chartData[0];
-  const lastDataPoint = state.chartData[state.chartData.length - 1];
-  if (!firstDataPoint || !lastDataPoint) return;
-
-  const cached = priceRangeCache.get(state);
-  const unchanged =
-    cached &&
-    cached.timeframe === state.timeframe &&
-    cached.timeStart === state.timeStart &&
-    cached.timeEnd === state.timeEnd &&
-    cached.dataLength === state.chartData.length &&
-    cached.firstTime === firstDataPoint.epoch * 1000 &&
-    cached.lastTime === lastDataPoint.epoch * 1000;
-  if (unchanged) return;
-
+  if (!state.chartData || state.chartData.length === 0) return;
+  
   const visibleData = getVisibleData(state.chartData, state.timeStart, state.timeEnd);
   if (visibleData.length === 0) return;
 
@@ -64,22 +42,20 @@ export function updatePriceRangeFromData(state: State): void {
     dataMin = Math.min(dataMin, point.quote);
     dataMax = Math.max(dataMax, point.quote);
   }
+  
   if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) return;
 
   const config = getPriceConfig(state);
   const dataRange = dataMax - dataMin;
   
-  // Calculate padding based on data range
-  const topPadding = Math.max(
-    dataRange * PRICE_PADDING.topRatio,
-    PRICE_PADDING.minTopPadding
-  );
-  const bottomPadding = Math.max(
-    dataRange * PRICE_PADDING.bottomRatio,
-    PRICE_PADDING.minBottomPadding
-  );
+  // If data range is too small, use a minimum range
+  const effectiveDataRange = Math.max(dataRange, config.minRange * 0.1);
   
-  // Apply padding to min and max
+  // Calculate padding based on data range
+  const topPadding = Math.max(effectiveDataRange * PRICE_PADDING.topRatio, PRICE_PADDING.minTopPadding);
+  const bottomPadding = Math.max(effectiveDataRange * PRICE_PADDING.bottomRatio, PRICE_PADDING.minBottomPadding);
+  
+  // Apply padding
   let nextMin = dataMin - bottomPadding;
   let nextMax = dataMax + topPadding;
   
@@ -110,27 +86,6 @@ export function updatePriceRangeFromData(state: State): void {
   nextMin = Math.floor(nextMin / step) * step;
   nextMax = Math.ceil(nextMax / step) * step;
   
-  totalRange = nextMax - nextMin;
-  
-  // Final validation
-  if (totalRange < config.minRange) {
-    nextMin = nextMin - step;
-    totalRange = nextMax - nextMin;
-    
-    if (totalRange < config.minRange) {
-      nextMax = nextMax + step;
-    }
-  }
-  
-  if (totalRange > config.maxRange) {
-    const excess = totalRange - config.maxRange;
-    const halfExcess = excess / 2;
-    nextMin += halfExcess;
-    nextMax -= halfExcess;
-    nextMin = Math.floor(nextMin / step) * step;
-    nextMax = Math.ceil(nextMax / step) * step;
-  }
-  
   // Ensure positive prices
   if (nextMin < 0.01) {
     const shift = 0.01 - nextMin;
@@ -138,19 +93,17 @@ export function updatePriceRangeFromData(state: State): void {
     nextMax += shift;
   }
   
+  // Final validation - ensure we have valid numbers
   if (!Number.isFinite(nextMin) || !Number.isFinite(nextMax) || nextMax <= nextMin) return;
 
-  state.priceMin = nextMin;
-  state.priceMax = nextMax;
-
-  priceRangeCache.set(state, {
-    timeframe: state.timeframe,
-    timeStart: state.timeStart,
-    timeEnd: state.timeEnd,
-    dataLength: state.chartData.length,
-    firstTime: firstDataPoint.epoch * 1000,
-    lastTime: lastDataPoint.epoch * 1000,
-  });
+  // Only update if values changed significantly (prevents excessive updates)
+  const minChanged = Math.abs(state.priceMin - nextMin) > step * 0.1;
+  const maxChanged = Math.abs(state.priceMax - nextMax) > step * 0.1;
+  
+  if (minChanged || maxChanged) {
+    state.priceMin = nextMin;
+    state.priceMax = nextMax;
+  }
 }
 
 export function buildPriceAxis(state: State): { step: number; labelEvery: number; ticks: PriceTick[]; labels: PriceLabel[] } {
@@ -201,4 +154,33 @@ function getPipSize(state: State): number {
 function formatPriceLabel(state: State, price: number): string {
   const pipSize = getPipSize(state);  // Get the number of decimal places from data
   return price.toFixed(pipSize);      // Format price with correct decimal places
+}
+
+export function validateAndFixPriceRange(state: State): void {
+  if (!state.chartData || state.chartData.length === 0) return;
+  
+  const visibleData = getVisibleData(state.chartData, state.timeStart, state.timeEnd);
+  if (visibleData.length === 0) return;
+  
+  let dataMin = Infinity;
+  let dataMax = -Infinity;
+  for (const point of visibleData) {
+    dataMin = Math.min(dataMin, point.quote);
+    dataMax = Math.max(dataMax, point.quote);
+  }
+  
+  if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) return;
+  
+  // Check if current price range contains all data
+  if (state.priceMin > dataMin || state.priceMax < dataMax) {
+    // Data is outside the current range - force full update
+    updatePriceRangeFromData(state);
+  }
+  
+  // Additional safety: ensure minimum range
+  const currentRange = state.priceMax - state.priceMin;
+  if (currentRange < 0.01) {
+    state.priceMin = dataMin - 0.5;
+    state.priceMax = dataMax + 0.5;
+  }
 }

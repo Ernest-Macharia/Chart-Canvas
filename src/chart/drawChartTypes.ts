@@ -5,15 +5,6 @@ import type { ChartDataPoint } from "./data";
 import type { CandleData } from "./ohlc";
 import { TIMEFRAME } from "./timeFrame";
 
-// drawChartData.ts - Replace getDynamicWidth with this improved version
-
-// Calculate dynamic candle/bar width based on zoom level and available space
-// Alternative: More dramatic zoom-based scaling
-// drawChartData.ts - Adjusted for closer spacing when zoomed in
-
-// drawChartData.ts - Adjusted for thinner candles when zoomed in
-
-// Even thinner candles when zoomed in
 function getDynamicCandleWidthDramatic(state: State, minWidth: number = 1.5, maxWidth: number = 26): number {
   const visibleRangeMs = state.timeEnd - state.timeStart;
   const visiblePx = plotWidth(state);

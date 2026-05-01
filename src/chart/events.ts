@@ -10,6 +10,7 @@ type SetupChartEventsArgs = {
   dpr: number;
   state: State;
   redraw: () => void;
+  onVisibilityChange?: () => void;
 };
 
 // Wires mouse, wheel, and resize handlers for chart interactions.
@@ -20,6 +21,7 @@ export function setupChartEvents({
   dpr,
   state,
   redraw,
+  onVisibilityChange,
 }: SetupChartEventsArgs): void {
   let lastDragX = 0;
 
@@ -32,7 +34,7 @@ export function setupChartEvents({
   canvas.addEventListener("mousemove", (e) => {
     if (!state.isDragging) return;
     const pos = getMousePos(canvas, e);
-    pan(state, pos.x - lastDragX, redraw);
+    pan(state, pos.x - lastDragX, redraw, onVisibilityChange);
     lastDragX = pos.x;
   });
 
@@ -43,7 +45,7 @@ export function setupChartEvents({
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
     const pos = getMousePos(canvas, e);
-    zoom(state, pos.x, pos.y, e.deltaY, redraw);
+    zoom(state, pos.x, pos.y, e.deltaY, redraw, onVisibilityChange);
   });
 
   window.addEventListener("resize", () => {
@@ -58,5 +60,6 @@ export function setupChartEvents({
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     redraw();
+    if (onVisibilityChange) onVisibilityChange();
   });
 }
