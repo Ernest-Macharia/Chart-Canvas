@@ -50,8 +50,10 @@ export function updatePriceRangeFromData(state: State): void {
   const dataRange = dataMax - dataMin;
   const visibleRangeMs = state.timeEnd - state.timeStart;
   
-  // Calculate adaptive padding based on data characteristics
-  const density = visibleData.length / Math.max(1, visibleRangeMs / (60 * 1000));
+  // Calculate adaptive padding
+  const visibleMinutes = visibleRangeMs / (60 * 1000);
+  const density = visibleData.length / Math.max(1, visibleMinutes);
+  
   let topPaddingRatio = PRICE_PADDING.topRatio;
   let bottomPaddingRatio = PRICE_PADDING.bottomRatio;
   
@@ -62,32 +64,23 @@ export function updatePriceRangeFromData(state: State): void {
     topPaddingRatio = Math.max(topPaddingRatio, 0.18);
     bottomPaddingRatio = Math.max(bottomPaddingRatio, 0.13);
   } else if (density > 500) {
-    topPaddingRatio = 0.10;
-    bottomPaddingRatio = 0.05;
+    topPaddingRatio = 0.12;
+    bottomPaddingRatio = 0.08;
   }
   
-  // Adjust based on price volatility
-  if (dataRange > 0) {
-    const volatility = dataRange / 100;
-    if (volatility > 0.5) {
-      topPaddingRatio += 0.05;
-      bottomPaddingRatio += 0.03;
-    } else if (volatility > 0.2) {
-      topPaddingRatio += 0.02;
-      bottomPaddingRatio += 0.01;
-    }
-  }
-  
-  topPaddingRatio = clamp(topPaddingRatio, 0.08, 0.35);
-  bottomPaddingRatio = clamp(bottomPaddingRatio, 0.05, 0.25);
-
   const effectiveDataRange = Math.max(dataRange, config.minRange * 0.1);
-
   const topPadding = Math.max(effectiveDataRange * topPaddingRatio, PRICE_PADDING.minTopPadding);
   const bottomPadding = Math.max(effectiveDataRange * bottomPaddingRatio, PRICE_PADDING.minBottomPadding);
   
   let nextMin = dataMin - bottomPadding;
   let nextMax = dataMax + topPadding;
+  
+  if (dataMin < nextMin) {
+    nextMin = dataMin - (dataRange * 0.1);
+  }
+  if (dataMax > nextMax) {
+    nextMax = dataMax + (dataRange * 0.1);
+  }
   
   if (nextMin < 0.01) {
     const shift = 0.01 - nextMin;
@@ -113,18 +106,26 @@ export function updatePriceRangeFromData(state: State): void {
     totalRange = nextMax - nextMin;
   }
 
+  // Snap to grid steps for clean labels
   const step = getPriceStep(state, totalRange);
   if (!Number.isFinite(step) || step <= 0) return;
 
   nextMin = Math.floor(nextMin / step) * step;
   nextMax = Math.ceil(nextMax / step) * step;
-
+  
+  if (dataMin < nextMin) {
+    nextMin = Math.floor((dataMin - (dataRange * 0.05)) / step) * step;
+  }
+  if (dataMax > nextMax) {
+    nextMax = Math.ceil((dataMax + (dataRange * 0.05)) / step) * step;
+  }
+  
   if (nextMin < 0.01) {
     const shift = 0.01 - nextMin;
     nextMin = 0.01;
     nextMax += shift;
   }
-  
+
   if (!Number.isFinite(nextMin) || !Number.isFinite(nextMax) || nextMax <= nextMin) return;
 
   const minChanged = Math.abs(state.priceMin - nextMin) > step * 0.1;

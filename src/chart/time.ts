@@ -7,48 +7,55 @@ import { getLatestDataTime } from "./data";
 
 let previousStepSec: number = 0;
 
-// Estimate label width in pixels
-function estimateLabelWidthPx(stepSec: number): number {
-  const charPx = 7.5;
-  let chars = 8;
-  if (stepSec < 60) chars = 8;           // "14:50:30" = 8 chars
-  else if (stepSec < 86400) chars = 5;   // "14:50" = 5 chars
-  else chars = 6;                         // "23 Apr" = 6 chars
-  return chars * charPx + 12;
-}
 
 export function pickNiceTimeStepSecondsByPixels(
   rangeSec: number,
   plotWidthPx: number,
-  targetPx: number = 100,
-  minPx: number = 70,
-  maxPx: number = 200,
-  prevStepSec?: number,
-  hysteresisPx: number = 25,
-  candidates?: readonly number[]
+  targetPx: number,
+  minPx: number,
+  maxPx: number,
+  prevStepSec: number | undefined,
+  candidates: readonly number[]
 ): number {
-  if (rangeSec <= 0 || plotWidthPx <= 0) return 60;
+  if (rangeSec <= 0 || plotWidthPx <= 0) return candidates[0] || 60;
   
-  const steps = candidates || [1, 2, 5, 10, 15, 30, 60, 120, 180, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400];
-
-  const isMobile = plotWidthPx < 500;
-  const effectiveMin = isMobile ? Math.max(minPx, 55) : minPx;
-  const effectiveTarget = isMobile ? Math.max(targetPx, 80) : targetPx;
+  const pixelsPerSec = plotWidthPx / rangeSec;
   
-  let bestStep = steps[steps.length - 1];
+  // Adjust target/min for different range sizes
+  let effectiveTargetPx = targetPx;
+  let effectiveMinPx = minPx;
+  
+  if (rangeSec < 300) { 
+    effectiveTargetPx = Math.min(targetPx, 80);
+    effectiveMinPx = Math.max(minPx, 50);
+  } else if (rangeSec > 3600) {
+    effectiveTargetPx = Math.min(targetPx + 50, 150);
+  }
+  
+  
+  let bestStep = candidates[0];
   let bestScore = Infinity;
   
-  for (const step of steps) {
-    const spacingPx = (step / rangeSec) * plotWidthPx;
-    const labelMinPx = estimateLabelWidthPx(step);
-    const zoomingOut = prevStepSec !== undefined && step > prevStepSec;
-    const hardFloor = Math.max(effectiveMin, labelMinPx, zoomingOut ? labelMinPx + hysteresisPx : 0);
+  for (const step of candidates) {
+    // Skip steps larger than range (would give zero or one label)
+    if (step > rangeSec * 1.5) continue;
     
-    if (spacingPx < hardFloor) continue;
+    const spacingPx = step * pixelsPerSec;
+
+    if (spacingPx < effectiveMinPx) continue;
+    let score;
+    if (rangeSec < 300) {
+      score = Math.abs(spacingPx - effectiveTargetPx);
+      if (step <= 5) score *= 0.8;
+    } else {
+      const inBand = spacingPx <= maxPx;
+      const distance = Math.abs(spacingPx - effectiveTargetPx);
+      score = inBand ? distance : distance + 1000;
+    }
     
-    const inBand = spacingPx <= maxPx;
-    const distance = Math.abs(spacingPx - effectiveTarget);
-    const score = inBand ? distance : distance + 1000;
+    if (prevStepSec !== undefined && Math.abs(step - prevStepSec) <= step * 0.5) {
+      score *= 0.9;
+    }
     
     if (score < bestScore) {
       bestScore = score;
@@ -56,9 +63,12 @@ export function pickNiceTimeStepSecondsByPixels(
     }
   }
   
+  if (bestScore === Infinity) {
+    return candidates[0];
+  }
+  
   return bestStep;
 }
-
 export function floorToStep(value: number, step: number): number {
   return Math.floor(value / step) * step;
 }
@@ -81,13 +91,17 @@ export function getTimeStep(state: State, range: number): number {
   const plotW = plotWidth(state);
   
   const minPx = config.minPixelsPerTick;
-  
-  // Target spacing: aim for 80-120px between labels
   const targetPx = Math.min(120, minPx + 35);
   const maxPx = targetPx * 2;
   
   const stepSec = pickNiceTimeStepSecondsByPixels(
-    range, plotW, targetPx, minPx, maxPx, previousStepSec, 25, config.gridSteps
+    range,
+    plotW,
+    targetPx,
+    minPx,
+    maxPx,
+    previousStepSec,
+    config.gridSteps
   );
   
   previousStepSec = stepSec;
@@ -102,28 +116,52 @@ export function buildTimeAxis(state: State): { stepMs: number; ticks: TimeTick[]
   const stepMs = getTimeStep(state, range);
   const stepSec = stepMs / 1000;
 
-  const tStart = floorToStep(state.timeStart / 1000, stepSec);
-  const tEnd = ceilToStep(state.timeEnd / 1000, stepSec);
+
+  let tStart: number;
+  let tEnd: number;
+  
+  if (rangeMs < 300 && stepSec <= 10) {
+    tStart = state.timeStart / 1000;
+    tEnd = state.timeEnd / 1000;
+  } else {
+    tStart = floorToStep(state.timeStart / 1000, stepSec);
+    tEnd = ceilToStep(state.timeEnd / 1000, stepSec);
+  }
   
   const ticks: TimeTick[] = [];
   const labels: TimeLabel[] = [];
   const plotW = plotWidth(state);
   const plotLeft = state.left;
   const plotRight = state.left + plotW;
-
+  
+  const maxLabels = Math.min(20, Math.ceil(plotW / 40));
+  let labelsAdded = 0;
+  let labelStep = 1;
+  
+  if (rangeMs < 300 && stepSec <= 5) {
+    const estimatedLabels = (tEnd - tStart) / stepSec;
+    if (estimatedLabels > maxLabels) {
+      labelStep = Math.ceil(estimatedLabels / maxLabels);
+    }
+  }
+  
+  let tickNumber = 0;
   for (let tSec = tStart; tSec <= tEnd + stepSec * 0.5; tSec += stepSec) {
     const tMs = tSec * 1000;
     const x = timeToX(state, tMs);
     
     if (x >= plotLeft - 10 && x <= plotRight + 10) {
-      const tickNumber = Math.round(tMs / stepMs);
       ticks.push({ value: tMs, x, tickNumber });
-
-      labels.push({ 
-        value: tMs, 
-        x, 
-        label: config.formatLabel(tSec, stepSec) 
-      });
+      
+      if (labelsAdded % labelStep === 0) {
+        labels.push({ 
+          value: tMs, 
+          x, 
+          label: config.formatLabel(tSec, stepSec)
+        });
+      }
+      labelsAdded++;
+      tickNumber++;
     }
   }
 
@@ -133,7 +171,6 @@ export function buildTimeAxis(state: State): { stepMs: number; ticks: TimeTick[]
 export function generateTimeLabels(state: State): TimeLabel[] {
   return buildTimeAxis(state).labels;
 }
-
 
 export function applyRightPadding(state: State, paddingRatio: number = 0.30): void {
   if (!state.chartData || state.chartData.length === 0) return;
@@ -156,7 +193,6 @@ export function removeRightPadding(state: State): void {
   const latestDataTime = getLatestDataTime(state.chartData);
   const currentRange = state.timeEnd - state.timeStart;
   
-
   const minimalPadding = currentRange * 0.05;
   state.timeEnd = latestDataTime + minimalPadding;
   state.timeStart = latestDataTime + minimalPadding - currentRange;
@@ -188,7 +224,7 @@ export function needsOffset(state: State): boolean {
   
   const latestDataTime = getLatestDataTime(state.chartData);
   const atLatest = Math.abs(state.timeEnd - latestDataTime) <= 100;
-
+  
   return atLatest && state.timeEnd <= latestDataTime + 10;
 }
 
