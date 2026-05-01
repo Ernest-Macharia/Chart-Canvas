@@ -7,7 +7,7 @@ import { getLatestDataTime } from "./data";
 
 let previousStepSec: number = 0;
 
-// Estimate label width in pixels (used by step calculation only)
+// Estimate label width in pixels
 function estimateLabelWidthPx(stepSec: number): number {
   const charPx = 7.5;
   let chars = 8;
@@ -17,7 +17,6 @@ function estimateLabelWidthPx(stepSec: number): number {
   return chars * charPx + 12;
 }
 
-// Core step selection algorithm (matches reference chart)
 export function pickNiceTimeStepSecondsByPixels(
   rangeSec: number,
   plotWidthPx: number,
@@ -31,8 +30,7 @@ export function pickNiceTimeStepSecondsByPixels(
   if (rangeSec <= 0 || plotWidthPx <= 0) return 60;
   
   const steps = candidates || [1, 2, 5, 10, 15, 30, 60, 120, 180, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 86400];
-  
-  // Mobile adjustment (same as reference chart)
+
   const isMobile = plotWidthPx < 500;
   const effectiveMin = isMobile ? Math.max(minPx, 55) : minPx;
   const effectiveTarget = isMobile ? Math.max(targetPx, 80) : targetPx;
@@ -78,19 +76,15 @@ export function clampTimeRange(state: State, range: number): number {
   return clamp(range, config.minRange, config.maxRange);
 }
 
-// Get the time step in milliseconds
-// Target spacing calculated to produce ~10 labels at default zoom
 export function getTimeStep(state: State, range: number): number {
   const config = getTimeConfig(state);
   const plotW = plotWidth(state);
   
-  // Use config values as the base (already adjusted for ~10 labels)
   const minPx = config.minPixelsPerTick;
   
   // Target spacing: aim for 80-120px between labels
-  // On 800px screen: 800/80 = 10 labels, 800/120 = 6-7 labels
   const targetPx = Math.min(120, minPx + 35);
-  const maxPx = targetPx * 2;  // Max is 2x target (for very zoomed out)
+  const maxPx = targetPx * 2;
   
   const stepSec = pickNiceTimeStepSecondsByPixels(
     range, plotW, targetPx, minPx, maxPx, previousStepSec, 25, config.gridSteps
@@ -108,7 +102,6 @@ export function buildTimeAxis(state: State): { stepMs: number; ticks: TimeTick[]
   const stepMs = getTimeStep(state, range);
   const stepSec = stepMs / 1000;
 
-  // Round to nice boundaries (floor start, ceil end)
   const tStart = floorToStep(state.timeStart / 1000, stepSec);
   const tEnd = ceilToStep(state.timeEnd / 1000, stepSec);
   
@@ -117,18 +110,15 @@ export function buildTimeAxis(state: State): { stepMs: number; ticks: TimeTick[]
   const plotW = plotWidth(state);
   const plotLeft = state.left;
   const plotRight = state.left + plotW;
-  
-  // Loop through each step - EVERY step gets a tick AND a label
+
   for (let tSec = tStart; tSec <= tEnd + stepSec * 0.5; tSec += stepSec) {
     const tMs = tSec * 1000;
     const x = timeToX(state, tMs);
     
-    // Only include if within or near plot area (with small margin)
     if (x >= plotLeft - 10 && x <= plotRight + 10) {
       const tickNumber = Math.round(tMs / stepMs);
       ticks.push({ value: tMs, x, tickNumber });
-      
-      // ALWAYS add a label for EVERY tick - the step algorithm already ensures no overlap
+
       labels.push({ 
         value: tMs, 
         x, 
@@ -144,18 +134,6 @@ export function generateTimeLabels(state: State): TimeLabel[] {
   return buildTimeAxis(state).labels;
 }
 
-// Check if we should show the latest button (not at latest, no offset)
-export function shouldShowLatestButton(state: State): boolean {
-  if (!state.chartData || state.chartData.length === 0) return false;
-  
-  const latestDataTime = getLatestDataTime(state.chartData);
-  const isAtLatest = Math.abs(state.timeEnd - latestDataTime) <= 100;
-  const hasOffset = state.timeEnd > latestDataTime + 100;
-  
-  // Show button when we're not at latest data AND we have no offset
-  return !isAtLatest && !hasOffset;
-}
-
 
 export function applyRightPadding(state: State, paddingRatio: number = 0.30): void {
   if (!state.chartData || state.chartData.length === 0) return;
@@ -163,12 +141,10 @@ export function applyRightPadding(state: State, paddingRatio: number = 0.30): vo
   const latestDataTime = getLatestDataTime(state.chartData);
   const currentRange = state.timeEnd - state.timeStart;
   
-  // Calculate data portion (70% of total range)
   const dataPortion = 1 - paddingRatio;
   const dataRange = currentRange * dataPortion;
   
   // Set time range with offset (30% empty space on the right)
-  // The data ends at latestDataTime, and we have empty space after it
   state.timeStart = latestDataTime - dataRange;
   state.timeEnd = latestDataTime + (currentRange * paddingRatio);
 }
@@ -180,12 +156,13 @@ export function removeRightPadding(state: State): void {
   const latestDataTime = getLatestDataTime(state.chartData);
   const currentRange = state.timeEnd - state.timeStart;
   
-  // Snap to latest data (no offset)
-  state.timeEnd = latestDataTime;
-  state.timeStart = latestDataTime - currentRange;
+
+  const minimalPadding = currentRange * 0.05;
+  state.timeEnd = latestDataTime + minimalPadding;
+  state.timeStart = latestDataTime + minimalPadding - currentRange;
 }
 
-// Check if the chart's right edge is at or near the latest data
+// Check if chart's right edge is at or near the latest data
 export function isAtLatestData(state: State): boolean {
   if (!state.chartData || state.chartData.length === 0) return false;
   
@@ -200,8 +177,10 @@ export function hasRightPadding(state: State): boolean {
   if (!state.chartData || state.chartData.length === 0) return false;
   
   const latestDataTime = getLatestDataTime(state.chartData);
-  // If timeEnd is greater than latestDataTime, we have padding/offset
-  return state.timeEnd > latestDataTime + 10; // Small tolerance
+  const currentRange = state.timeEnd - state.timeStart;
+  const currentPadding = state.timeEnd - latestDataTime;
+  
+  return currentPadding > currentRange * 0.05;
 }
 
 export function needsOffset(state: State): boolean {
@@ -209,8 +188,7 @@ export function needsOffset(state: State): boolean {
   
   const latestDataTime = getLatestDataTime(state.chartData);
   const atLatest = Math.abs(state.timeEnd - latestDataTime) <= 100;
-  
-  // We need offset if we're at latest data but don't have padding
+
   return atLatest && state.timeEnd <= latestDataTime + 10;
 }
 
@@ -219,13 +197,27 @@ export function goToLatest(state: State, paddingRatio: number = 0.30): void {
   if (!state.chartData || state.chartData.length === 0) return;
   
   const latestDataTime = getLatestDataTime(state.chartData);
-  const totalVisibleRange = state.timeEnd - state.timeStart;
+  const currentRange = state.timeEnd - state.timeStart;
   
   // Calculate data portion (70% of total range)
   const dataPortion = 1 - paddingRatio;
-  const dataRange = totalVisibleRange * dataPortion;
+  const dataRange = currentRange * dataPortion;
   
-  // Set to latest with offset
+  // Set to latest with 30% offset
   state.timeStart = latestDataTime - dataRange;
-  state.timeEnd = latestDataTime + (totalVisibleRange * paddingRatio);
+  state.timeEnd = latestDataTime + (currentRange * paddingRatio);
+}
+
+// Show LATEST button only when panned away from default position
+export function shouldShowLatestButton(state: State): boolean {
+  if (!state.chartData || state.chartData.length === 0) return false;
+  
+  const latestDataTime = getLatestDataTime(state.chartData);
+  const currentRange = state.timeEnd - state.timeStart;
+  const expectedOffset = currentRange * 0.30; // 30% offset
+  const expectedEnd = latestDataTime + expectedOffset;
+  
+  const isAtDefaultPosition = Math.abs(state.timeEnd - expectedEnd) < 100;
+  
+  return !isAtDefaultPosition;
 }

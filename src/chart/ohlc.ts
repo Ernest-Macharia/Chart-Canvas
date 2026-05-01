@@ -28,38 +28,31 @@ export function ticksToOHLC(
   
   const intervalSeconds = getCandleIntervalSeconds(timeframe);
   const intervalMs = intervalSeconds * 1000;
-  const candles: CandleData[] = [];
   
-  let currentCandle: CandleData | null = null;
-  let currentCandleStartTime: number = 0;
+  const candleMap = new Map<number, CandleData>();
   
   for (const tick of ticks) {
     const tickTimeMs = tick.epoch * 1000;
     const candleStartTime = Math.floor(tickTimeMs / intervalMs) * intervalMs;
     
-    if (!currentCandle || candleStartTime !== currentCandleStartTime) {
-      if (currentCandle) {
-        candles.push(currentCandle);
-      }
-      
-      currentCandle = {
+    const existing = candleMap.get(candleStartTime);
+    if (!existing) {
+      candleMap.set(candleStartTime, {
         time: candleStartTime,
         open: tick.quote,
         high: tick.quote,
         low: tick.quote,
         close: tick.quote,
-      };
-      currentCandleStartTime = candleStartTime;
+      });
     } else {
-      currentCandle.high = Math.max(currentCandle.high, tick.quote);
-      currentCandle.low = Math.min(currentCandle.low, tick.quote);
-      currentCandle.close = tick.quote;
+      existing.high = Math.max(existing.high, tick.quote);
+      existing.low = Math.min(existing.low, tick.quote);
+      existing.close = tick.quote;
     }
   }
-  
-  if (currentCandle) {
-    candles.push(currentCandle);
-  }
+
+  const candles = Array.from(candleMap.values());
+  candles.sort((a, b) => a.time - b.time);
   
   return candles;
 }

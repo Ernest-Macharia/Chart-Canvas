@@ -2,7 +2,6 @@ import { plotWidth } from "./state";
 import { getLatestDataTime, getEarliestDataTime } from "./data";
 import type { State } from "./types";
 
-// Shifts visible time window based on drag delta in pixels
 function panTime(state: State, deltaX: number): void {
   const tRange = state.timeEnd - state.timeStart;
   const deltaTime = -deltaX * (tRange / plotWidth(state));
@@ -20,28 +19,30 @@ function panTime(state: State, deltaX: number): void {
     newEnd = earliestDataTime + range;
   }
   
-  // Right boundary: cannot go beyond latest data
-  if (newEnd > latestDataTime) {
-    newEnd = latestDataTime;
-    newStart = latestDataTime - range;
+  // Calculate default offset position (30% padding)
+  const defaultPaddingRatio = 0.30;
+  const defaultOffset = range * defaultPaddingRatio;
+  const defaultEndPosition = latestDataTime + defaultOffset;
+  
+  // Strict right boundary: cannot go beyond default offset position
+  // This prevents the offset from ever getting bigger than 30%
+  if (newEnd > defaultEndPosition) {
+    newEnd = defaultEndPosition;
+    newStart = defaultEndPosition - range;
   }
   
   state.timeStart = newStart;
   state.timeEnd = newEnd;
 }
 
-// Applies pan update then triggers redraw
 export function pan(state: State, dx: number, redraw: () => void, onVisibilityChange?: () => void): void {
   if (Math.abs(dx) < 1) return;
   
-  // Store old values to check if anything changed
   const oldStart = state.timeStart;
   const oldEnd = state.timeEnd;
   
-  // Apply pan - NO padding adjustments during pan
   panTime(state, dx);
   
-  // Only redraw if something actually changed
   if (oldStart !== state.timeStart || oldEnd !== state.timeEnd) {
     redraw();
     if (onVisibilityChange) onVisibilityChange();

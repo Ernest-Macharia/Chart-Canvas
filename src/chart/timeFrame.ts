@@ -29,7 +29,7 @@ const fmtDDMonHHMM = (tSec: number): string => `${fmtDDMon(tSec)} ${fmtHHMM(tSec
 export const TIMEFRAME = {
   // 1 SECOND (tick chart)
   "1t": {
-    defaultRange: 60 * SECOND,           // Show 70 seconds
+    defaultRange: 60 * SECOND,           // Show 60 seconds
     step: 1 * SECOND,
     minRange: 10 * SECOND,
     maxRange: 8 * MINUTE,

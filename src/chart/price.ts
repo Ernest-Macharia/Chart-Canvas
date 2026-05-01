@@ -20,15 +20,16 @@ export function clampPriceRange(state: State, min: number, max: number): { min: 
 
 export function getPriceStep(state: State, range: number): number {
   const config = getPriceConfig(state);
-  return findGridStep(config.gridSteps, range, plotHeight(state), config.minPixelsPerTick);
+  const plotH = plotHeight(state);
+  const zoomFactor = Math.pow(1.2, state.priceZoomLevel);
+  const adjustedMinPixels = config.minPixelsPerTick / zoomFactor;
+  
+  return findGridStep(config.gridSteps, range, plotH, adjustedMinPixels);
 }
-
 export function snapPrice(value: number, step: number): number {
   return Math.round(value / step) * step;
 }
 
-
-// price.ts - Update updatePriceRangeFromData to be more aggressive
 
 export function updatePriceRangeFromData(state: State): void {
   if (!state.chartData || state.chartData.length === 0) return;
@@ -47,21 +48,55 @@ export function updatePriceRangeFromData(state: State): void {
 
   const config = getPriceConfig(state);
   const dataRange = dataMax - dataMin;
+  const visibleRangeMs = state.timeEnd - state.timeStart;
   
-  // If data range is too small, use a minimum range
+  // Calculate adaptive padding based on data characteristics
+  const density = visibleData.length / Math.max(1, visibleRangeMs / (60 * 1000));
+  let topPaddingRatio = PRICE_PADDING.topRatio;
+  let bottomPaddingRatio = PRICE_PADDING.bottomRatio;
+  
+  if (density < 10) {
+    topPaddingRatio = Math.max(topPaddingRatio, 0.25);
+    bottomPaddingRatio = Math.max(bottomPaddingRatio, 0.20);
+  } else if (density < 50) {
+    topPaddingRatio = Math.max(topPaddingRatio, 0.18);
+    bottomPaddingRatio = Math.max(bottomPaddingRatio, 0.13);
+  } else if (density > 500) {
+    topPaddingRatio = 0.10;
+    bottomPaddingRatio = 0.05;
+  }
+  
+  // Adjust based on price volatility
+  if (dataRange > 0) {
+    const volatility = dataRange / 100;
+    if (volatility > 0.5) {
+      topPaddingRatio += 0.05;
+      bottomPaddingRatio += 0.03;
+    } else if (volatility > 0.2) {
+      topPaddingRatio += 0.02;
+      bottomPaddingRatio += 0.01;
+    }
+  }
+  
+  topPaddingRatio = clamp(topPaddingRatio, 0.08, 0.35);
+  bottomPaddingRatio = clamp(bottomPaddingRatio, 0.05, 0.25);
+
   const effectiveDataRange = Math.max(dataRange, config.minRange * 0.1);
+
+  const topPadding = Math.max(effectiveDataRange * topPaddingRatio, PRICE_PADDING.minTopPadding);
+  const bottomPadding = Math.max(effectiveDataRange * bottomPaddingRatio, PRICE_PADDING.minBottomPadding);
   
-  // Calculate padding based on data range
-  const topPadding = Math.max(effectiveDataRange * PRICE_PADDING.topRatio, PRICE_PADDING.minTopPadding);
-  const bottomPadding = Math.max(effectiveDataRange * PRICE_PADDING.bottomRatio, PRICE_PADDING.minBottomPadding);
-  
-  // Apply padding
   let nextMin = dataMin - bottomPadding;
   let nextMax = dataMax + topPadding;
   
+  if (nextMin < 0.01) {
+    const shift = 0.01 - nextMin;
+    nextMin = 0.01;
+    nextMax += shift;
+  }
+  
   let totalRange = nextMax - nextMin;
   
-  // Ensure range meets minimum requirements
   if (totalRange < config.minRange) {
     const deficit = config.minRange - totalRange;
     const halfDeficit = deficit / 2;
@@ -70,7 +105,6 @@ export function updatePriceRangeFromData(state: State): void {
     totalRange = nextMax - nextMin;
   }
   
-  // Enforce max range limit
   if (totalRange > config.maxRange) {
     const excess = totalRange - config.maxRange;
     const halfExcess = excess / 2;
@@ -79,24 +113,20 @@ export function updatePriceRangeFromData(state: State): void {
     totalRange = nextMax - nextMin;
   }
 
-  // Snap to grid steps for clean labels
   const step = getPriceStep(state, totalRange);
   if (!Number.isFinite(step) || step <= 0) return;
 
   nextMin = Math.floor(nextMin / step) * step;
   nextMax = Math.ceil(nextMax / step) * step;
-  
-  // Ensure positive prices
+
   if (nextMin < 0.01) {
     const shift = 0.01 - nextMin;
     nextMin = 0.01;
     nextMax += shift;
   }
   
-  // Final validation - ensure we have valid numbers
   if (!Number.isFinite(nextMin) || !Number.isFinite(nextMax) || nextMax <= nextMin) return;
 
-  // Only update if values changed significantly (prevents excessive updates)
   const minChanged = Math.abs(state.priceMin - nextMin) > step * 0.1;
   const maxChanged = Math.abs(state.priceMax - nextMax) > step * 0.1;
   
@@ -143,17 +173,16 @@ export function generatePriceLabels(state: State): PriceLabel[] {
 }
 
 function getPipSize(state: State): number {
-  // Check if chart data exists and has at least one point
   if (state.chartData && state.chartData.length > 0) {
-    return state.chartData[0].pip_size || 4;  // Return pip_size from first tick, default to 4
+    return state.chartData[0].pip_size || 4;
   }
-  return 4;  // Default to 4 decimal places if no data
+  return 4;
 }
 
 // Formats prices with precision based on pip_size from the data
 function formatPriceLabel(state: State, price: number): string {
-  const pipSize = getPipSize(state);  // Get the number of decimal places from data
-  return price.toFixed(pipSize);      // Format price with correct decimal places
+  const pipSize = getPipSize(state);
+  return price.toFixed(pipSize);
 }
 
 export function validateAndFixPriceRange(state: State): void {
@@ -171,13 +200,10 @@ export function validateAndFixPriceRange(state: State): void {
   
   if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) return;
   
-  // Check if current price range contains all data
   if (state.priceMin > dataMin || state.priceMax < dataMax) {
-    // Data is outside the current range - force full update
     updatePriceRangeFromData(state);
   }
-  
-  // Additional safety: ensure minimum range
+
   const currentRange = state.priceMax - state.priceMin;
   if (currentRange < 0.01) {
     state.priceMin = dataMin - 0.5;

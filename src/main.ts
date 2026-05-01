@@ -5,7 +5,7 @@ import type { Timeframe } from "./chart/types";
 import { createChartTypeControls, createFloatingLatestButton } from "./chart/chartControls";
 import { setupChartEvents } from "./chart/events";
 import { liveDataManager } from "./chart/liveData";
-import { applyRightPadding, isAtLatestData } from "./chart/time";
+import { getLatestDataTime } from "./chart/data";
 
 const container = document.getElementById("chart")!;
 const canvas = document.createElement("canvas");
@@ -22,10 +22,8 @@ canvas.style.width = width + "px";
 canvas.style.height = height + "px";
 ctx.scale(DPR, DPR);
 
-// Create state with default values from createState()
 const state = createState(width, height);
 
-// Initialize with live data (starts with MASTER_CHART_DATA)
 state.chartData = liveDataManager.getData();
 
 // Calculate initial range
@@ -36,7 +34,7 @@ const paddingRatio = 0.30; // 30% offset
 
 // Calculate: data portion is 70% of total visible range
 const dataPortion = 1 - paddingRatio; // 0.70
-const dataRange = totalVisibleRange * dataPortion; // 21 minutes of actual data
+const dataRange = totalVisibleRange * dataPortion;
 
 // Set time range with offset
 state.timeStart = lastTime - dataRange;
@@ -44,20 +42,86 @@ state.timeEnd = lastTime + (totalVisibleRange * paddingRatio);
 state.timeZoomLevel = 0;
 state.priceZoomLevel = 0;
 
-// Auto-update chart when new data arrives
+// Auto-update chart when new data arrives with smooth animation
 let isUpdating = false;
+let animationFrame: number | null = null;
+let targetTimeStart = state.timeStart;
+let targetTimeEnd = state.timeEnd;
+let animationStartTime = 0;
+let animationDuration = 300;
+
+function animateToNewTimeRange(newStart: number, newEnd: number) {
+  const startStart = state.timeStart;
+  const startEnd = state.timeEnd;
+  const deltaStart = newStart - startStart;
+  const deltaEnd = newEnd - startEnd;
+  
+  animationStartTime = performance.now();
+  targetTimeStart = newStart;
+  targetTimeEnd = newEnd;
+  
+  function animate(currentTime: number) {
+    const elapsed = currentTime - animationStartTime;
+    const progress = Math.min(1, elapsed / animationDuration);
+
+    const easeProgress = 1 - Math.pow(1 - progress, 3);
+    
+    state.timeStart = startStart + (deltaStart * easeProgress);
+    state.timeEnd = startEnd + (deltaEnd * easeProgress);
+    
+    draw();
+    
+    if (progress < 1) {
+      animationFrame = requestAnimationFrame(animate);
+    } else {
+      state.timeStart = newStart;
+      state.timeEnd = newEnd;
+      draw();
+      animationFrame = null;
+    }
+  }
+  
+  if (animationFrame) {
+    cancelAnimationFrame(animationFrame);
+  }
+  animationFrame = requestAnimationFrame(animate);
+}
+
 liveDataManager.addListener((newData) => {
   if (isUpdating) return;
   isUpdating = true;
   
+  const oldLatestTime = state.chartData.length > 0 ? getLatestDataTime(state.chartData) : 0;
   state.chartData = newData;
+  const newLatestTime = getLatestDataTime(state.chartData);
   
-  // If we're at the latest data, maintain the offset
-  if (isAtLatestData(state)) {
-    applyRightPadding(state);
+  // Only auto-pan if new data arrived
+  if (newLatestTime > oldLatestTime) {
+    const timeDiff = newLatestTime - oldLatestTime;
+    const currentRange = state.timeEnd - state.timeStart;
+    const expectedOffset = currentRange * 0.30;
+    const expectedEnd = newLatestTime + expectedOffset;
+    
+    // Check if we're at the offset position
+    const isAtOffsetPosition = Math.abs(state.timeEnd - expectedEnd) < currentRange * 0.1;
+    
+    if (isAtOffsetPosition) {
+      // Calculate new range that maintains 30% offset
+      const dataPortion = 1 - 0.30;
+      const dataRange = currentRange * dataPortion;
+      const newStart = newLatestTime - dataRange;
+      const newEnd = newLatestTime + (currentRange * 0.30);
+      
+      // Animate the shift to the left
+      animateToNewTimeRange(newStart, newEnd);
+    } else if (Math.abs(state.timeEnd - newLatestTime) < 100) {
+      // If we're at the very edge (no offset), just shift by the time difference
+      const newStart = state.timeStart + timeDiff;
+      const newEnd = state.timeEnd + timeDiff;
+      animateToNewTimeRange(newStart, newEnd);
+    }
   }
   
-  draw();
   isUpdating = false;
 });
 
@@ -80,11 +144,9 @@ function setTimeframe(tf: Timeframe) {
   const totalVisibleRange = tfConfig.defaultRange;
   const paddingRatio = 0.30;
   
-  // Calculate: data portion is 70% of total visible range
   const dataPortion = 1 - paddingRatio;
   const dataRange = totalVisibleRange * dataPortion;
   
-  // Set time range with offset
   state.timeStart = lastTime - dataRange;
   state.timeEnd = lastTime + (totalVisibleRange * paddingRatio);
   state.timeZoomLevel = 0;

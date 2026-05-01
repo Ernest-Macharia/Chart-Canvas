@@ -10,12 +10,10 @@ import { ticksToOHLC, getVisibleCandles } from "./ohlc";
 
 export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
   validateAndFixPriceRange(state);
-  // First, ensure price range is correct for current visible data
   if (state.useDataRange && state.chartData && state.chartData.length > 0) {
     updatePriceRangeFromData(state);
   }
   
-  // Safety check: ensure price range is valid
   if (state.priceMax <= state.priceMin) {
     state.priceMax = state.priceMin + 1;
   }
@@ -35,7 +33,6 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
   if (state.chartData && state.chartData.length > 0) {
     const visibleData = getVisibleData(state.chartData, state.timeStart, state.timeEnd);
     
-    // Only draw if we have visible data
     if (visibleData.length > 0) {
       if (state.chartType === "line") {
         drawLineChart(ctx, state, visibleData, "#3b82f6", 2);

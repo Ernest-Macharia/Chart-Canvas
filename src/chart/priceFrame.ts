@@ -3,9 +3,21 @@ import type { Timeframe, State } from "./types";
 export const PRICE_PADDING = {
   topRatio: 0.15,    // 15% padding at the top
   bottomRatio: 0.10, // 10% padding at the bottom
-  minTopPadding: 5,  // Minimum 5 units at top (for very small ranges)
+  minTopPadding: 5,  // Minimum 5 units at top
   minBottomPadding: 3 // Minimum 3 units at bottom
-} as const;
+};
+
+// Allow dynamic updates to padding
+export function updatePricePadding(topRatio: number, bottomRatio: number): void {
+  PRICE_PADDING.topRatio = Math.max(0.05, Math.min(0.5, topRatio));
+  PRICE_PADDING.bottomRatio = Math.max(0.03, Math.min(0.3, bottomRatio));
+}
+
+// Reset to defaults
+export function resetPricePadding(): void {
+  PRICE_PADDING.topRatio = 0.15;
+  PRICE_PADDING.bottomRatio = 0.10;
+}
 
 export const PRICEFRAME = {
   "1t": {
@@ -139,7 +151,7 @@ export const PRICEFRAME = {
   },
 } as const;
 
-// Helper functions - FIXED with proper types
+// Helper functions
 export function getPriceConfig(state: State) {
   return PRICEFRAME[state.timeframe];
 }
