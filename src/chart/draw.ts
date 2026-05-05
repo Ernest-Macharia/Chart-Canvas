@@ -1,11 +1,11 @@
 import { drawPriceGrid, drawTimeGrid } from "./drawGrid";
 import { drawPriceLabels, drawTimeLabels } from "./drawLabels";
-import { buildPriceAxis, updatePriceRangeFromData, validateAndFixPriceRange } from "./price";
+import { buildPriceAxis, validateAndFixPriceRange } from "./price";
 import { plotHeight, plotWidth } from "./state";
 import { buildTimeAxis } from "./time";
 import type { State } from "./types";
-import { getVisibleData } from "./data";
-import { ticksToOHLC, getVisibleCandles } from "./ohlc";
+import { getVisibleBounds } from "./data";
+import { getVisibleCandleBounds, ticksToOHLC } from "./ohlc";
 import { drawLineChart, drawAreaChart, drawCandleChart, drawHollowCandleChart, drawOHLCChart } from "./drawChartTypes";
 
 let offscreenCanvas: HTMLCanvasElement | null = null;
@@ -71,9 +71,6 @@ function drawPrimaryStatic(state: State): HTMLCanvasElement {
 
 export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
   validateAndFixPriceRange(state);
-  if (state.useDataRange && state.chartData.length > 0) {
-    updatePriceRangeFromData(state);
-  }
 
   if (state.priceMax <= state.priceMin) {
     state.priceMax = state.priceMin + 1;
@@ -88,24 +85,30 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
   ctx.clip();
 
   if (state.chartData.length > 0) {
-    const visibleData = getVisibleData(state.chartData, state.timeStart, state.timeEnd);
+    const visibleBounds = getVisibleBounds(state.chartData, state.timeStart, state.timeEnd);
+    if (!visibleBounds) {
+      ctx.restore();
+      return;
+    }
 
-    if (visibleData.length > 0) {
-      if (state.chartType === "line") {
-        drawLineChart(ctx, state, visibleData, "#26A69A", 2);
-      } else if (state.chartType === "area") {
-        drawAreaChart(ctx, state, visibleData, "#26A69A");
-      } else {
-        const candles = ticksToOHLC(state.chartData, state.timeframe);
-        const visibleCandles = getVisibleCandles(candles, state.timeStart, state.timeEnd);
+    if (state.chartType === "line") {
+      drawLineChart(ctx, state, state.chartData, visibleBounds.from, visibleBounds.to, "#26A69A", 2);
+    } else if (state.chartType === "area") {
+      drawAreaChart(ctx, state, state.chartData, visibleBounds.from, visibleBounds.to, "#26A69A");
+    } else {
+      const candles = ticksToOHLC(state.chartData, state.timeframe);
+      const visibleCandles = getVisibleCandleBounds(candles, state.timeStart, state.timeEnd);
+      if (!visibleCandles) {
+        ctx.restore();
+        return;
+      }
 
-        if (state.chartType === "candle") {
-          drawCandleChart(ctx, state, visibleCandles, "#26A69A", "#EF5350", "#666666");
-        } else if (state.chartType === "hollow") {
-          drawHollowCandleChart(ctx, state, visibleCandles, "#26A69A", "#EF5350", "#666666");
-        } else if (state.chartType === "ohlc") {
-          drawOHLCChart(ctx, state, visibleCandles, "#26A69A", "#EF5350");
-        }
+      if (state.chartType === "candle") {
+        drawCandleChart(ctx, state, candles, visibleCandles.from, visibleCandles.to, "#26A69A", "#EF5350", "#666666");
+      } else if (state.chartType === "hollow") {
+        drawHollowCandleChart(ctx, state, candles, visibleCandles.from, visibleCandles.to, "#26A69A", "#EF5350", "#666666");
+      } else if (state.chartType === "ohlc") {
+        drawOHLCChart(ctx, state, candles, visibleCandles.from, visibleCandles.to, "#26A69A", "#EF5350");
       }
     }
   }

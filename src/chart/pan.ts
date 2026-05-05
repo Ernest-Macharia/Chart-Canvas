@@ -2,6 +2,7 @@ import { plotWidth } from "./state";
 import { TIMEFRAME } from "./timeFrame";
 import { getLatestDataTime, getEarliestDataTime } from "./data";
 import type { State } from "./types";
+import { updatePriceRangeFromData } from "./price";
 
 const LEFT_BUFFER_CANDLES = 10;
 const LATEST_OFFSET_RATIO = 0.3;
@@ -67,6 +68,7 @@ export function pan(state: State, dx: number, redraw: () => void, onVisibilityCh
   panTime(state, dx);
 
   if (oldStart !== state.timeStart || oldEnd !== state.timeEnd) {
+    if (state.useDataRange) updatePriceRangeFromData(state);
     redraw();
     if (onVisibilityChange) onVisibilityChange();
   }

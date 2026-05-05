@@ -224,6 +224,7 @@ liveDataManager.addListener((newData) => {
     lastKnownLatestTime = newLatestTime;
   }
 
+  if (state.useDataRange) fitPriceRangeInstant(state);
   markStaticDirty();
   requestRender();
 });

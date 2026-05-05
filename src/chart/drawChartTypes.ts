@@ -64,10 +64,12 @@ export function drawLineChart(
   ctx: CanvasRenderingContext2D,
   state: State,
   data: ChartDataPoint[],
+  from: number = 0,
+  to: number = data.length,
   color: string = "#26A69A",
   lineWidth: number = 2,
 ): void {
-  if (data.length < 2) return;
+  if (to - from < 2) return;
 
   ctx.save();
   ctx.strokeStyle = color;
@@ -77,7 +79,8 @@ export function drawLineChart(
   ctx.beginPath();
 
   let started = false;
-  for (const point of data) {
+  for (let i = from; i < to; i++) {
+    const point = data[i];
     const x = timeToX(state, point.epoch * 1000);
     const y = priceToY(state, point.quote);
 
@@ -97,9 +100,11 @@ export function drawAreaChart(
   ctx: CanvasRenderingContext2D,
   state: State,
   data: ChartDataPoint[],
+  from: number = 0,
+  to: number = data.length,
   color: string = "#26A69A",
 ): void {
-  if (data.length < 2) return;
+  if (to - from < 2) return;
 
   const baseY = state.top + plotHeight(state);
   ctx.save();
@@ -109,22 +114,23 @@ export function drawAreaChart(
   gradient.addColorStop(1, `${color}00`);
 
   ctx.beginPath();
-  const firstX = timeToX(state, data[0].epoch * 1000);
+  const first = data[from];
+  const firstX = timeToX(state, first.epoch * 1000);
   ctx.moveTo(firstX, baseY);
-  ctx.lineTo(firstX, priceToY(state, data[0].quote));
+  ctx.lineTo(firstX, priceToY(state, first.quote));
 
-  for (let i = 1; i < data.length; i++) {
+  for (let i = from + 1; i < to; i++) {
     ctx.lineTo(timeToX(state, data[i].epoch * 1000), priceToY(state, data[i].quote));
   }
 
-  const lastX = timeToX(state, data[data.length - 1].epoch * 1000);
+  const lastX = timeToX(state, data[to - 1].epoch * 1000);
   ctx.lineTo(lastX, baseY);
   ctx.closePath();
 
   ctx.fillStyle = gradient;
   ctx.fill();
 
-  drawLineChart(ctx, state, data, color, 2);
+  drawLineChart(ctx, state, data, from, to, color, 2);
   ctx.restore();
 }
 
@@ -132,20 +138,23 @@ export function drawCandleChart(
   ctx: CanvasRenderingContext2D,
   state: State,
   candles: CandleData[],
+  from: number = 0,
+  to: number = candles.length,
   upColor: string = "#26A69A",
   downColor: string = "#EF5350",
   wickColor: string = "#666666",
 ): void {
-  if (!candles.length) return;
+  if (to <= from) return;
 
   const slotWidth = getSlotWidthPx(state);
   const bodyWidth = getCandleBodyWidthPx(slotWidth);
   const half = bodyWidth / 2;
-  const wickCompressionFactor = getWickCompressionFactor(candles.length);
+  const wickCompressionFactor = getWickCompressionFactor(to - from);
 
   ctx.save();
   clearDirtyRects();
-  for (const candle of candles) {
+  for (let i = from; i < to; i++) {
+    const candle = candles[i];
     const x = timeToX(state, candle.time);
 
     const yOpen = priceToY(state, candle.open);
@@ -183,21 +192,24 @@ export function drawHollowCandleChart(
   ctx: CanvasRenderingContext2D,
   state: State,
   candles: CandleData[],
+  from: number = 0,
+  to: number = candles.length,
   upColor: string = "#26A69A",
   downColor: string = "#EF5350",
   wickColor: string = "#666666",
 ): void {
-  if (!candles.length) return;
+  if (to <= from) return;
 
   const slotWidth = getSlotWidthPx(state);
   const bodyWidth = getCandleBodyWidthPx(slotWidth);
   const half = bodyWidth / 2;
-  const wickCompressionFactor = getWickCompressionFactor(candles.length);
+  const wickCompressionFactor = getWickCompressionFactor(to - from);
 
   ctx.save();
   ctx.lineWidth = getHollowLineWidthPx();
   clearDirtyRects();
-  for (const candle of candles) {
+  for (let i = from; i < to; i++) {
+    const candle = candles[i];
     const x = timeToX(state, candle.time);
 
     const yOpen = priceToY(state, candle.open);
@@ -241,20 +253,23 @@ export function drawOHLCChart(
   ctx: CanvasRenderingContext2D,
   state: State,
   candles: CandleData[],
+  from: number = 0,
+  to: number = candles.length,
   upColor: string = "#26A69A",
   downColor: string = "#EF5350",
 ): void {
-  if (!candles.length) return;
+  if (to <= from) return;
 
   const slotWidth = getSlotWidthPx(state);
   const tickWidth = getOHLCTickWidthPx(slotWidth);
-  const wickCompressionFactor = getWickCompressionFactor(candles.length);
+  const wickCompressionFactor = getWickCompressionFactor(to - from);
 
   ctx.save();
   ctx.lineWidth = getOHLCLineWidthPx(slotWidth);
   clearDirtyRects();
 
-  for (const candle of candles) {
+  for (let i = from; i < to; i++) {
+    const candle = candles[i];
     const x = timeToX(state, candle.time);
     const yOpen = priceToY(state, candle.open);
     const yClose = priceToY(state, candle.close);
