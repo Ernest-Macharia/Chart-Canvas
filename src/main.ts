@@ -5,7 +5,7 @@ import type { Timeframe } from "./chart/types";
 import { createChartTypeControls, createFloatingLatestButton } from "./chart/chartControls";
 import { setupChartEvents } from "./chart/events";
 import { liveDataManager } from "./chart/liveData";
-import { getLatestDataTime } from "./chart/data";
+import { getEarliestDataTime, getLatestDataTime } from "./chart/data";
 import { fitPriceRangeInstant } from "./chart/price";
 import { clearAllCache, invalidateTimeframeCache, precomputeTimeframeCache, ticksToOHLC } from "./chart/ohlc";
 
@@ -83,7 +83,12 @@ function resetWindowToTimeframe(tf: Timeframe) {
   const cfg = TIMEFRAME[tf];
   const latest = liveDataManager.getLatestTick();
   const nowMs = latest ? latest.epoch * 1000 : Date.now();
-  const windowMs = cfg.defaultRange;
+  const earliestMs = getEarliestDataTime(state.chartData);
+  const latestMs = getLatestDataTime(state.chartData);
+  const dataSpanMs = Math.max(1, latestMs - earliestMs);
+  const minUsefulWindowMs = Math.max(TIMEFRAME[tf].step * 8, 30_000);
+  const maxPannableWindowMs = Math.max(minUsefulWindowMs, dataSpanMs * 0.9);
+  const windowMs = Math.min(cfg.defaultRange, maxPannableWindowMs);
   const rightPadMs = windowMs * 0.3;
   state.timeStart = nowMs + rightPadMs - windowMs;
   state.timeEnd = nowMs + rightPadMs;

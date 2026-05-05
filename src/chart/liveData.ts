@@ -1,5 +1,8 @@
+// liveData.ts - Manages real-time price data with dynamic limits per timeframe
+
 import { dataPointPool, type ChartDataPoint } from "./data";
 import { MASTER_CHART_DATA } from "./hardcodedData";
+import type { Timeframe } from "./types";
 
 type LiveDataConfig = {
   updateInterval: number;
@@ -20,6 +23,7 @@ class LiveDataManager {
   private listeners: ((data: ChartDataPoint[]) => void)[] = [];
   private drift = 0;
   private tickCounter = 0;
+  private isGeneratingHistorical = false;
 
   constructor(initialData: ChartDataPoint[], config?: Partial<LiveDataConfig>) {
     this.data = [...initialData];
@@ -29,9 +33,103 @@ class LiveDataManager {
       volatility: 0.08,
       pipSize: 4,
       symbol: "R_50",
-      maxDataPoints: 100000,
+      maxDataPoints: this.getMaxDataPointsForTimeframe("1m"),
       ...config,
     };
+  }
+
+  // Calculate required data points for a timeframe (to show enough candles)
+  private getRequiredDataPointsForTimeframe(timeframe: Timeframe): number {
+    const requiredCandles = 200; // Show at least 200 candles
+    const candleSeconds: Record<Timeframe, number> = {
+      "1t": 1,
+      "1m": 60,
+      "2m": 120,
+      "3m": 180,
+      "5m": 300,
+      "10m": 600,
+      "15m": 900,
+      "30m": 1800,
+      "1h": 3600,
+      "2h": 7200,
+      "4h": 14400,
+      "8h": 28800,
+      "1D": 86400,
+    };
+    return requiredCandles * candleSeconds[timeframe];
+  }
+
+  // Get max data points based on current timeframe (with upper limit)
+  private getMaxDataPointsForTimeframe(timeframe: Timeframe): number {
+    const required = this.getRequiredDataPointsForTimeframe(timeframe);
+    // Keep 2x required for buffer, but cap at 500,000 to prevent memory issues
+    return Math.min(required * 2, 500000);
+  }
+
+  // Update data retention when timeframe changes
+  updateForTimeframe(timeframe: Timeframe): void {
+    const newMaxPoints = this.getMaxDataPointsForTimeframe(timeframe);
+    
+    if (newMaxPoints !== this.config.maxDataPoints) {
+      this.config.maxDataPoints = newMaxPoints;
+      
+      // Trim data if needed
+      if (this.data.length > newMaxPoints) {
+        const overflow = this.data.length - newMaxPoints;
+        const removed = this.data.splice(0, overflow);
+        for (const point of removed) dataPointPool.release(point);
+      }
+    }
+  }
+
+  // Generate historical data on demand for higher timeframes
+  private async generateHistoricalData(additionalTicks: number): Promise<void> {
+    if (this.isGeneratingHistorical) return;
+    this.isGeneratingHistorical = true;
+    
+    const firstTick = this.data[0];
+    let currentPrice = firstTick.quote;
+    const newTicks: ChartDataPoint[] = [];
+    const startEpoch = firstTick.epoch - additionalTicks;
+    
+    // Generate in chunks to avoid blocking UI
+    const chunkSize = 50000;
+    for (let i = 0; i < additionalTicks; i += chunkSize) {
+      const chunkEnd = Math.min(i + chunkSize, additionalTicks);
+      
+      for (let j = i; j < chunkEnd; j++) {
+        const change = (Math.random() - 0.48) * this.config.volatility;
+        currentPrice = currentPrice + change;
+        currentPrice = Math.max(10, Math.min(1000, currentPrice));
+        
+        newTicks.push({
+          epoch: startEpoch + j,
+          quote: roundTo(currentPrice, this.config.pipSize),
+          symbol: this.config.symbol,
+          pip_size: this.config.pipSize,
+        });
+      }
+      
+      // Yield to UI to prevent freezing
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    
+    // Combine and sort
+    this.data = [...newTicks, ...this.data];
+    this.data.sort((a, b) => a.epoch - b.epoch);
+    
+    this.isGeneratingHistorical = false;
+    this.notifyListeners();
+  }
+
+  // Ensure enough data for current timeframe
+  async ensureDataForTimeframe(timeframe: Timeframe): Promise<void> {
+    const requiredPoints = this.getRequiredDataPointsForTimeframe(timeframe);
+    
+    if (this.data.length < requiredPoints) {
+      const needed = requiredPoints - this.data.length;
+      await this.generateHistoricalData(needed);
+    }
   }
 
   start(): void {
@@ -104,7 +202,7 @@ export const liveDataManager = new LiveDataManager(MASTER_CHART_DATA, {
   volatility: 0.08,
   pipSize: 4,
   symbol: "R_50",
-  maxDataPoints: 100000,
+  maxDataPoints: 200000,
 });
 
 liveDataManager.start();

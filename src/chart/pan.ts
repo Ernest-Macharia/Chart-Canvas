@@ -17,24 +17,22 @@ function panTime(state: State, deltaX: number): void {
   let newStart = state.timeStart + deltaTime;
   let newEnd = state.timeEnd + deltaTime;
 
-  // When the chart is already snapped to latest with full offset,
-  // block dragging further into future empty space.
   const latestDataTime = getLatestDataTime(state.chartData);
   const currentRange = state.timeEnd - state.timeStart;
-  const currentPadding = state.timeEnd - latestDataTime;
-  const expectedFullPadding = currentRange * LATEST_OFFSET_RATIO;
-  const isAtFullLatestOffset = Math.abs(currentPadding - expectedFullPadding) <= currentRange * 0.05;
-  const tryingToIncreaseOffset = newEnd > state.timeEnd;
-
-  if (isAtFullLatestOffset && tryingToIncreaseOffset) {
-    newStart = state.timeStart;
-    newEnd = state.timeEnd;
-  }
 
   const candleSec = Math.floor(TIMEFRAME[state.timeframe].step / 1000);
   const defaultLatestEnd = latestDataTime + currentRange * LATEST_OFFSET_RATIO;
   const rightLimit = defaultLatestEnd;
   const leftLimit = getEarliestDataTime(state.chartData) - LEFT_BUFFER_CANDLES * candleSec * 1000;
+  const availableSpan = rightLimit - leftLimit;
+
+  // When the current window is larger than available pannable span
+  // (common on higher timeframes), use a stable pinned range to avoid
+  // boundary "fighting" that feels like sticky or broken panning.
+  if (availableSpan <= 0) return;
+  if (currentRange >= availableSpan) {
+    return;
+  }
 
   if (newEnd > rightLimit) {
     const overflow = newEnd - rightLimit;
