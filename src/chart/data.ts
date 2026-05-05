@@ -71,19 +71,30 @@ function upperBoundEpoch(data: { epoch: number }[], targetSec: number): number {
   return lo;
 }
 
+// Returns [from, to) index bounds for the visible window without allocating.
+export function getVisibleBounds<T extends { epoch: number }>(
+  data: T[],
+  timeStartMs: number,
+  timeEndMs: number,
+): { from: number; to: number } | null {
+  if (!data.length) return null;
+  const startSec = Math.floor(timeStartMs / 1000);
+  const endSec = Math.ceil(timeEndMs / 1000);
+  const from = lowerBoundEpoch(data, startSec);
+  const to = upperBoundEpoch(data, endSec);
+  if (to <= from) return null;
+  return { from, to };
+}
+
 // Filters series data to the active visible time window.
 export function getVisibleData<T extends { epoch: number }>(
   data: T[],
   timeStartMs: number,
   timeEndMs: number,
 ): T[] {
-  if (!data.length) return [];
-  const startSec = Math.floor(timeStartMs / 1000);
-  const endSec = Math.ceil(timeEndMs / 1000);
-  const from = lowerBoundEpoch(data, startSec);
-  const to = upperBoundEpoch(data, endSec);
-  if (to <= from) return [];
-  return data.slice(from, to);
+  const bounds = getVisibleBounds(data, timeStartMs, timeEndMs);
+  if (!bounds) return [];
+  return data.slice(bounds.from, bounds.to);
 }
 
 // Get the latest data timestamp in milliseconds

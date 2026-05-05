@@ -1,4 +1,4 @@
-import { getVisibleData } from "./data";
+import { getVisibleBounds } from "./data";
 import { PRICEFRAME } from "./priceFrame";
 import { plotHeight } from "./state";
 import { clamp } from "./math";
@@ -62,13 +62,14 @@ export function pickNicePriceStep(
 }
 
 function computeVisiblePriceRange(state: State): { priceMin: number; priceMax: number } | null {
-  const visibleData = getVisibleData(state.chartData, state.timeStart, state.timeEnd);
-  if (!visibleData.length) return null;
+  const bounds = getVisibleBounds(state.chartData, state.timeStart, state.timeEnd);
+  if (!bounds) return null;
 
   let lo = Infinity;
   let hi = -Infinity;
 
-  for (const p of visibleData) {
+  for (let i = bounds.from; i < bounds.to; i++) {
+    const p = state.chartData[i];
     if (p.quote < lo) lo = p.quote;
     if (p.quote > hi) hi = p.quote;
   }
@@ -157,12 +158,13 @@ function formatPriceLabel(step: number, price: number): string {
 export function validateAndFixPriceRange(state: State): void {
   if (!state.chartData || state.chartData.length === 0) return;
 
-  const visibleData = getVisibleData(state.chartData, state.timeStart, state.timeEnd);
-  if (!visibleData.length) return;
+  const bounds = getVisibleBounds(state.chartData, state.timeStart, state.timeEnd);
+  if (!bounds) return;
 
   let dataMin = Infinity;
   let dataMax = -Infinity;
-  for (const point of visibleData) {
+  for (let i = bounds.from; i < bounds.to; i++) {
+    const point = state.chartData[i];
     dataMin = Math.min(dataMin, point.quote);
     dataMax = Math.max(dataMax, point.quote);
   }

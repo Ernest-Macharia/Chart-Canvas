@@ -29,7 +29,7 @@ class LiveDataManager {
       volatility: 0.08,
       pipSize: 4,
       symbol: "R_50",
-      maxDataPoints: 200000,
+      maxDataPoints: 100000,
       ...config,
     };
   }
@@ -104,7 +104,7 @@ export const liveDataManager = new LiveDataManager(MASTER_CHART_DATA, {
   volatility: 0.08,
   pipSize: 4,
   symbol: "R_50",
-  maxDataPoints: 200000,
+  maxDataPoints: 100000,
 });
 
 liveDataManager.start();

@@ -50,6 +50,18 @@ function upperBoundCandles(candles: CandleData[], timeMs: number): number {
   return lo;
 }
 
+export function getVisibleCandleBounds(
+  candles: CandleData[],
+  timeStart: number,
+  timeEnd: number,
+): { from: number; to: number } | null {
+  if (!candles.length) return null;
+  const from = lowerBoundCandles(candles, timeStart);
+  const to = upperBoundCandles(candles, timeEnd);
+  if (to <= from) return null;
+  return { from, to };
+}
+
 type CandleCache = {
   candles: CandleData[];
   lastAccess: number;
@@ -166,9 +178,7 @@ export function ticksToOHLC(ticks: ChartDataPoint[], timeframe: Timeframe): Cand
 }
 
 export function getVisibleCandles(candles: CandleData[], timeStart: number, timeEnd: number): CandleData[] {
-  if (!candles.length) return [];
-  const from = lowerBoundCandles(candles, timeStart);
-  const to = upperBoundCandles(candles, timeEnd);
-  if (to <= from) return [];
-  return candles.slice(from, to);
+  const bounds = getVisibleCandleBounds(candles, timeStart, timeEnd);
+  if (!bounds) return [];
+  return candles.slice(bounds.from, bounds.to);
 }
