@@ -55,8 +55,11 @@ let lastKnownLatestTime = 0;
 
 function applySize() {
   const dpr = window.devicePixelRatio || 1;
-  const width = container.clientWidth;
-  const height = container.clientHeight;
+  const rect = container.getBoundingClientRect();
+  const measuredWidth = Math.floor(rect.width);
+  const measuredHeight = Math.floor(rect.height);
+  const width = Math.max(1, measuredWidth > 1 ? measuredWidth : window.innerWidth);
+  const height = Math.max(1, measuredHeight > 1 ? measuredHeight : window.innerHeight);
   state.width = width;
   state.height = height;
 
@@ -188,6 +191,9 @@ bottomControls.appendChild(separator);
 const chartTypeControls = createChartTypeControls(state, requestRender);
 bottomControls.appendChild(chartTypeControls);
 container.parentElement?.appendChild(bottomControls);
+applySize();
+fitPriceRangeInstant(state);
+requestRender();
 
 updateTimeframeButtonStyles(DEFAULT_TIMERANGE);
 
@@ -235,6 +241,16 @@ window.addEventListener("resize", () => {
   markStaticDirty();
   requestRender();
 });
+
+if ("ResizeObserver" in window) {
+  const resizeObserver = new ResizeObserver(() => {
+    applySize();
+    fitPriceRangeInstant(state);
+    markStaticDirty();
+    requestRender();
+  });
+  resizeObserver.observe(container);
+}
 
 window.addEventListener("beforeunload", () => {
   clearAllCache();
