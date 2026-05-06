@@ -164,7 +164,7 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
   if (state.priceMax <= state.priceMin) state.priceMax = state.priceMin + 1;
 
   const staticCanvas = drawPrimaryStatic(state);
-  ctx.drawImage(staticCanvas, 0, 0);
+  ctx.drawImage(staticCanvas, 0, 0, state.width, state.height);
 
   ctx.save();
   ctx.beginPath();
