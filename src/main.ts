@@ -2,7 +2,7 @@ import { drawChart, markStaticDirty } from "./chart/draw";
 import { createState } from "./chart/state";
 import { DEFAULT_TIMERANGE, TIMEFRAME } from "./chart/timeFrame";
 import type { Timeframe } from "./chart/types";
-import { createChartTypeControls, createFloatingLatestButton } from "./chart/chartControls";
+import { createChartTypeControls, createFloatingLatestButton, createIndicatorControls } from "./chart/chartControls";
 import { setupChartEvents } from "./chart/events";
 import { liveDataManager } from "./chart/liveData";
 import { getEarliestDataTime, getLatestDataTime } from "./chart/data";
@@ -195,6 +195,8 @@ bottomControls.appendChild(separator);
 
 const chartTypeControls = createChartTypeControls(state, requestRender);
 bottomControls.appendChild(chartTypeControls);
+const indicatorControls = createIndicatorControls(state, requestRender);
+bottomControls.appendChild(indicatorControls);
 container.parentElement?.appendChild(bottomControls);
 applySize();
 fitPriceRangeInstant(state);

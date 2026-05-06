@@ -4,6 +4,7 @@ import type { State } from "./types";
 import type { ChartDataPoint } from "./data";
 import type { CandleData } from "./ohlc";
 import { TIMEFRAME } from "./timeFrame";
+import type { IndicatorSeriesPoint } from "./indicators";
 
 export type DirtyRect = { x: number; y: number; w: number; h: number };
 let dirtyRects: DirtyRect[] = [];
@@ -296,5 +297,52 @@ export function drawOHLCChart(
     ctx.stroke();
   }
 
+  ctx.restore();
+}
+
+export function drawIndicatorLine(
+  ctx: CanvasRenderingContext2D,
+  state: State,
+  data: ChartDataPoint[],
+  values: IndicatorSeriesPoint[],
+  from: number,
+  to: number,
+  color: string = "#1d4ed8",
+  lineWidth: number = 2,
+): void {
+  if (to - from < 2) return;
+  if (values.length !== data.length) return;
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  let hasPath = false;
+  let segmentStarted = false;
+  ctx.beginPath();
+
+  for (let i = from; i < to; i++) {
+    const value = values[i];
+    if (value == null) {
+      segmentStarted = false;
+      continue;
+    }
+
+    const point = data[i];
+    const x = timeToX(state, point.epoch * 1000);
+    const y = priceToY(state, value);
+
+    if (!segmentStarted) {
+      ctx.moveTo(x, y);
+      segmentStarted = true;
+      hasPath = true;
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+
+  if (hasPath) ctx.stroke();
   ctx.restore();
 }

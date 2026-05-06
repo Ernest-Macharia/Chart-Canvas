@@ -133,3 +133,131 @@ export function createChartTypeControls(
   
   return container;
 }
+
+export function createIndicatorControls(
+  state: State,
+  redraw: () => void
+): HTMLDivElement {
+  const container = document.createElement("div");
+  container.style.cssText = "display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;";
+
+  const label = document.createElement("span");
+  label.innerText = "Indicator";
+  label.style.cssText = "font-size:13px;font-weight:600;color:#1e293b;font-family:monospace;";
+  container.appendChild(label);
+
+  const select = document.createElement("select");
+  select.style.cssText = "padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#ffffff;color:#0f172a;font-size:13px;font-family:monospace;";
+  const options = [
+    { value: "none", label: "None" },
+    { value: "sma", label: "SMA" },
+    { value: "ema", label: "EMA" },
+  ] as const;
+  for (const option of options) {
+    const el = document.createElement("option");
+    el.value = option.value;
+    el.innerText = option.label;
+    if (state.indicatorType === option.value) el.selected = true;
+    select.appendChild(el);
+  }
+
+  const periodInput = document.createElement("input");
+  periodInput.type = "number";
+  periodInput.min = "2";
+  periodInput.max = "500";
+  periodInput.step = "1";
+  periodInput.value = String(state.indicatorPeriod);
+  periodInput.style.cssText = "width:80px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#ffffff;color:#0f172a;font-size:13px;font-family:monospace;";
+  periodInput.title = "Indicator period";
+
+  const periodLabel = document.createElement("span");
+  periodLabel.innerText = "Period";
+  periodLabel.style.cssText = "font-size:13px;font-weight:500;color:#334155;font-family:monospace;";
+
+  const colorLabel = document.createElement("span");
+  colorLabel.innerText = "Color";
+  colorLabel.style.cssText = "font-size:13px;font-weight:500;color:#334155;font-family:monospace;";
+
+  const colorInput = document.createElement("input");
+  colorInput.type = "color";
+  colorInput.value = state.indicatorColor;
+  colorInput.style.cssText = "width:42px;height:32px;padding:0;border:1px solid #cbd5e1;border-radius:6px;background:#ffffff;cursor:pointer;";
+  colorInput.title = "Indicator color";
+
+  const widthLabel = document.createElement("span");
+  widthLabel.innerText = "Width";
+  widthLabel.style.cssText = "font-size:13px;font-weight:500;color:#334155;font-family:monospace;";
+
+  const widthInput = document.createElement("input");
+  widthInput.type = "number";
+  widthInput.min = "1";
+  widthInput.max = "8";
+  widthInput.step = "1";
+  widthInput.value = String(state.indicatorLineWidth);
+  widthInput.style.cssText = "width:64px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;background:#ffffff;color:#0f172a;font-size:13px;font-family:monospace;";
+  widthInput.title = "Indicator line width";
+
+  const refreshPeriodState = () => {
+    const disabled = state.indicatorType === "none";
+    periodInput.disabled = disabled;
+    colorInput.disabled = disabled;
+    widthInput.disabled = disabled;
+    periodLabel.style.opacity = disabled ? "0.5" : "1";
+    colorLabel.style.opacity = disabled ? "0.5" : "1";
+    widthLabel.style.opacity = disabled ? "0.5" : "1";
+    periodInput.style.opacity = disabled ? "0.6" : "1";
+    colorInput.style.opacity = disabled ? "0.6" : "1";
+    widthInput.style.opacity = disabled ? "0.6" : "1";
+  };
+
+  select.onchange = () => {
+    const next = select.value;
+    if (next === "none" || next === "sma" || next === "ema") {
+      state.indicatorType = next;
+      refreshPeriodState();
+      redraw();
+    }
+  };
+
+  const applyPeriod = () => {
+    const parsed = Number.parseInt(periodInput.value, 10);
+    const normalized = Number.isFinite(parsed) ? Math.max(2, Math.min(500, parsed)) : 20;
+    periodInput.value = String(normalized);
+    if (state.indicatorPeriod !== normalized) {
+      state.indicatorPeriod = normalized;
+      redraw();
+    }
+  };
+  periodInput.oninput = applyPeriod;
+  periodInput.onchange = applyPeriod;
+
+  colorInput.oninput = () => {
+    if (state.indicatorColor !== colorInput.value) {
+      state.indicatorColor = colorInput.value;
+      redraw();
+    }
+  };
+
+  const applyWidth = () => {
+    const parsed = Number.parseInt(widthInput.value, 10);
+    const normalized = Number.isFinite(parsed) ? Math.max(1, Math.min(6, parsed)) : 2;
+    widthInput.value = String(normalized);
+    if (state.indicatorLineWidth !== normalized) {
+      state.indicatorLineWidth = normalized;
+      redraw();
+    }
+  };
+  widthInput.oninput = applyWidth;
+  widthInput.onchange = applyWidth;
+
+  refreshPeriodState();
+  container.appendChild(select);
+  container.appendChild(periodLabel);
+  container.appendChild(periodInput);
+  container.appendChild(colorLabel);
+  container.appendChild(colorInput);
+  container.appendChild(widthLabel);
+  container.appendChild(widthInput);
+
+  return container;
+}

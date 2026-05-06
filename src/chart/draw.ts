@@ -1,8 +1,9 @@
 import { getVisibleBounds } from "./data";
 import type { ChartDataPoint } from "./data";
-import { drawAreaChart, drawCandleChart, drawHollowCandleChart, drawLineChart, drawOHLCChart } from "./drawChartTypes";
+import { drawAreaChart, drawCandleChart, drawHollowCandleChart, drawIndicatorLine, drawLineChart, drawOHLCChart } from "./drawChartTypes";
 import { drawPriceGrid, drawTimeGrid } from "./drawGrid";
 import { drawPriceLabels, drawTimeLabels } from "./drawLabels";
+import { computeIndicator } from "./indicators";
 import { getVisibleCandleBounds, ticksToOHLC } from "./ohlc";
 import type { CandleData } from "./ohlc";
 import { buildPriceAxis, validateAndFixPriceRange } from "./price";
@@ -16,9 +17,11 @@ let offscreenDirty = true;
 let offscreenSignature = "";
 
 function getStaticSignature(state: State): string {
+  const dpr = window.devicePixelRatio || 1;
   return [
     state.width,
     state.height,
+    dpr.toFixed(2),
     state.left,
     state.right,
     state.top,
@@ -32,13 +35,17 @@ function getStaticSignature(state: State): string {
 }
 
 function ensureOffscreen(state: State): HTMLCanvasElement {
+  const dpr = window.devicePixelRatio || 1;
+  const targetWidth = Math.max(1, Math.floor(state.width * dpr));
+  const targetHeight = Math.max(1, Math.floor(state.height * dpr));
+
   if (!offscreenCanvas) {
     offscreenCanvas = document.createElement("canvas");
     offscreenDirty = true;
   }
-  if (offscreenCanvas.width !== state.width || offscreenCanvas.height !== state.height) {
-    offscreenCanvas.width = state.width;
-    offscreenCanvas.height = state.height;
+  if (offscreenCanvas.width !== targetWidth || offscreenCanvas.height !== targetHeight) {
+    offscreenCanvas.width = targetWidth;
+    offscreenCanvas.height = targetHeight;
     offscreenDirty = true;
   }
   return offscreenCanvas;
@@ -133,6 +140,8 @@ function drawPrimaryStatic(state: State): HTMLCanvasElement {
 
   const offCtx = canvas.getContext("2d");
   if (!offCtx) return canvas;
+  const dpr = window.devicePixelRatio || 1;
+  offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   offCtx.clearRect(0, 0, state.width, state.height);
   offCtx.fillStyle = "#FFFFFF";
@@ -167,6 +176,8 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
     const visibleBounds = getVisibleBounds(state.chartData, state.timeStart, state.timeEnd);
 
     if (visibleBounds) {
+      const candles = ticksToOHLC(state.chartData, state.timeframe);
+
       if (state.chartType === "line") {
         const reduced = decimateTicksForRender(state.chartData, visibleBounds.from, visibleBounds.to, maxDrawablePoints);
         drawLineChart(ctx, state, reduced, 0, reduced.length, "#26A69A", 2);
@@ -174,7 +185,6 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
         const reduced = decimateTicksForRender(state.chartData, visibleBounds.from, visibleBounds.to, maxDrawablePoints);
         drawAreaChart(ctx, state, reduced, 0, reduced.length, "#26A69A");
       } else {
-        const candles = ticksToOHLC(state.chartData, state.timeframe);
         const visibleCandles = getVisibleCandleBounds(candles, state.timeStart, state.timeEnd);
         if (visibleCandles) {
           const merged = aggregateCandlesByPixelColumn(state, candles, visibleCandles.from, visibleCandles.to);
@@ -185,6 +195,25 @@ export function drawChart(ctx: CanvasRenderingContext2D, state: State): void {
           } else if (state.chartType === "ohlc") {
             drawOHLCChart(ctx, state, merged, 0, merged.length, "#26A69A", "#EF5350");
           }
+        }
+      }
+
+      if (state.indicatorType !== "none") {
+        const indicatorSeries: ChartDataPoint[] = candles.map((c) => ({
+          epoch: Math.floor(c.time / 1000),
+          quote: c.close,
+          symbol: state.chartData[0]?.symbol ?? "",
+          pip_size: state.chartData[0]?.pip_size ?? 0,
+        }));
+        const candleVisibleBounds = getVisibleBounds(indicatorSeries, state.timeStart, state.timeEnd);
+        if (candleVisibleBounds) {
+          const prices = indicatorSeries.map((p) => p.quote);
+          const period = Math.max(2, Math.floor(state.indicatorPeriod));
+          const values = computeIndicator(prices, state.indicatorType, period);
+          const defaultColor = state.indicatorType === "sma" ? "#1d4ed8" : "#d97706";
+          const lineColor = state.indicatorColor || defaultColor;
+          const lineWidth = Math.max(1, Math.min(6, state.indicatorLineWidth || 2));
+          drawIndicatorLine(ctx, state, indicatorSeries, values, candleVisibleBounds.from, candleVisibleBounds.to, lineColor, lineWidth);
         }
       }
     }

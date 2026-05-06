@@ -1,4 +1,5 @@
 import type { ChartDataPoint } from "./data";
+import type { IndicatorType } from "./indicators";
 
 export type Timeframe = 
   | "1t"   // 1 tick (1 second)
@@ -35,6 +36,10 @@ export type State = {
   zoomLastTime: number;
   chartData: ChartDataPoint[];
   chartType: ChartType;
+  indicatorType: IndicatorType;
+  indicatorPeriod: number;
+  indicatorColor: string;
+  indicatorLineWidth: number;
   useDataRange: boolean;
 };
 

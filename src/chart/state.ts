@@ -36,6 +36,10 @@ export function createState(width: number, height: number): State {
 
     chartData: [],
     chartType: "line",
+    indicatorType: "none",
+    indicatorPeriod: 20,
+    indicatorColor: "#1d4ed8",
+    indicatorLineWidth: 2,
     useDataRange: true,
   };
 }
